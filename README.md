@@ -1,2 +1,2 @@
-# reserva-salas-ucu
-obligatorio de Base de Datos 1 (UCU, 2° semestre 2025)
+# Sistema de Reserva de Salas UCU
+Primer commit - estructura base del proyecto
