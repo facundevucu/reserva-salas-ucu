@@ -93,3 +93,13 @@ create table sancion_participante (
     PRIMARY KEY (ci_participante, fecha_inicio, fecha_fin),
     FOREIGN KEY (ci_participante) REFERENCES participante(ci)
 )
+
+CREATE TABLE IF NOT EXISTS log_acciones (
+    id_log INT AUTO_INCREMENT PRIMARY KEY,
+    ci_participante BIGINT,
+    accion VARCHAR(255),
+    estado VARCHAR(50),
+    fecha_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    detalle TEXT
+);
+-- log de acciones
