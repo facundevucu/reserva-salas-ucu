@@ -44,28 +44,44 @@ def crear_reserva(ci_participante, nombre_sala, id_turno, fecha, cantidad_partic
         return "El participante no está autorizado para reservar este tipo de sala."
 
     # Si pasa todas las validaciones, proceder a crear la reserva
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    query = """
-        INSERT INTO reserva (nombre_sala, edificio, fecha, id_turno, estado)
-        VALUES (
-            %s,
-            (SELECT edificio FROM sala WHERE nombre_sala = %s),
-            %s, 
-            %s, 
-            'activa');
-    """
-    # Para el edificio se hace un subquery, ya que no es un input del usuario
-    cursor.execute(query, (nombre_sala, nombre_sala, fecha, id_turno))
-    id_reserva = cursor.lastrowid # Guarda el id de la reserva recién creada
+    # Implementación de manejo de errores
 
-    # Ahora insertto al participante en la tabla reserva_participante
-    query_participante = """
-        INSERT INTO reserva_participante (ci_participante, id_reserva, fecha_solicitud_reserva, asistencia)
-        VALUES (%s, %s, CURDATE(), NULL);
-    """
-    cursor.execute(query_participante, (ci_participante, id_reserva))
-    conn.commit()
-    conn.close()
-    registrar_log(ci_participante, accion, "éxito", f"Reserva creada (ID {id_reserva})")
-    return "Reserva creada exitosamente."
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        query = """
+            INSERT INTO reserva (nombre_sala, edificio, fecha, id_turno, estado)
+            VALUES (
+                %s,
+                (SELECT edificio FROM sala WHERE nombre_sala = %s),
+                %s, 
+                %s, 
+                'activa');
+        """
+        # Para el edificio se hace un subquery, ya que no es un input del usuario
+        cursor.execute(query, (nombre_sala, nombre_sala, fecha, id_turno))
+        id_reserva = cursor.lastrowid # Guarda el id de la reserva recién creada
+
+        # Ahora insertto al participante en la tabla reserva_participante
+        query_participante = """
+            INSERT INTO reserva_participante (ci_participante, id_reserva, fecha_solicitud_reserva, asistencia)
+            VALUES (%s, %s, CURDATE(), NULL);
+        """
+        cursor.execute(query_participante, (ci_participante, id_reserva))
+        conn.commit()
+        conn.close()
+        registrar_log(ci_participante, accion, "éxito", f"Reserva creada (ID {id_reserva})")
+        return "Reserva creada exitosamente."
+    
+    except Exception as e:
+        # Si hay un error, hago rollback y registro el log
+        if conn:
+            conn.rollback()
+        registrar_log(ci_participante, accion, "error", f"Error SQL: {e}")
+        return "Ocurrió un error al crear la reserva. Intente nuevamente más tarde."
+    
+    finally:
+        if conn and conn.is_connected():
+            close_connection(conn)
