@@ -1,4 +1,4 @@
-from db_connection import get_connection
+from backend.db_connection import get_db_connection as get_connection
 
 # Verificar si el usuario tiene una sanción activa
 def tiene_sancion_activa(ci_participante):
