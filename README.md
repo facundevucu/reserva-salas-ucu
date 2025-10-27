@@ -2,7 +2,7 @@
 Estructura base del proyecto
 
 Informe:
-(https://correoucuedu-my.sharepoint.com/:w:/g/personal/facundo_diaz_correo_ucu_edu_uy/EXNML6CHFlVFpsL-GjQm3c4Bm36Gj-0a1oUQCpvc0GCKAQ?e=rf0P8R)
+(https://correoucuedu-my.sharepoint.com/:w:/g/personal/facundo_diaz_correo_ucu_edu_uy/EST_CWG3V7VOsgEXw4KttT0BRXe-R2F369E-MMPX8CSqlQ?e=tBdBJJ)
 
 Estado actual del proyecto segun GPT el mas crack
 
