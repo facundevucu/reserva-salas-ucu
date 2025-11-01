@@ -5,13 +5,18 @@ from reserva
 group by nombre_sala
 order by total_reservas DESC;
 
--- Turnos más demandados
-select t.id_turno, t.hora_inicio, t.hora_fin,
-       COUNT(r.id_reserva) as total_reservas
-from turno t
-left join reserva r on t.id_turno = r.id_turno
-group by t.id_turno, t.hora_inicio, t.hora_fin
-order by total_reservas DESC;
+-- TOP 3 Turnos más demandados
+SELECT
+  t.id_turno,
+  t.hora_inicio,
+  t.hora_fin,
+  COUNT(r.id_reserva) AS total_reservas
+FROM turno t
+INNER JOIN reserva r
+  ON t.id_turno = r.id_turno
+GROUP BY t.id_turno, t.hora_inicio, t.hora_fin
+ORDER BY total_reservas DESC
+LIMIT 3;
 
 -- Promedio de participantes por sala
 select r.nombre_sala,
