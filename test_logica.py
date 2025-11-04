@@ -27,7 +27,7 @@ def test_abm_reservas():
     ci_participante = 12345678
     nombre_sala = "Sala B1"
     id_turno = 1
-    fecha = "2025-11-19"
+    fecha = "2025-11-20"
     cantidad_participantes = 3
     estado = "activa"
 
