@@ -1,4 +1,4 @@
-create database reserva_salas_ucu_db;
+
 use reserva_salas_ucu_db;
 -- Primero creo el login ya que es independiente
 
@@ -72,8 +72,7 @@ create table reserva (
     id_turno INT NOT NULL,
     estado ENUM('activa', 'cancelada', 'sin_asistencia', 'finalizada'),
     PRIMARY KEY (id_reserva),
-    FOREIGN KEY (nombre_sala) REFERENCES sala(nombre_sala),
-    FOREIGN KEY (edificio) REFERENCES edificio(nombre_edificio),
+    FOREIGN KEY (nombre_sala, edificio) REFERENCES sala(nombre_sala, edificio),
     FOREIGN KEY (id_turno) REFERENCES turno(id_turno)
 );
 
@@ -92,14 +91,16 @@ create table sancion_participante (
     fecha_fin DATE,
     PRIMARY KEY (ci_participante, fecha_inicio, fecha_fin),
     FOREIGN KEY (ci_participante) REFERENCES participante(ci)
-)
+);
 
 CREATE TABLE IF NOT EXISTS log_acciones (
-    id_log INT AUTO_INCREMENT PRIMARY KEY,
-    ci_participante BIGINT,
-    accion VARCHAR(255),
+    id_log INT AUTO_INCREMENT,
+    ci_participante INT NULL,
+    accion VARCHAR(200),
     estado VARCHAR(50),
-    fecha_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    detalle TEXT
+    fecha_hora TIMESTAMP DEFAULT NOW(),
+    detalle VARCHAR(100),
+    PRIMARY KEY (id_log),
+    -- no le hago FK de ci
 );
 -- log de acciones

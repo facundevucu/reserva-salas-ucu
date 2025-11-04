@@ -28,7 +28,7 @@ def excede_reservas_semanales(ci_participante):
         AND r.estado = 'activa'
         AND YEARWEEK(r.fecha) = YEARWEEK(CURDATE());
     """
-    cursor.eecute(query, (ci_participante,))
+    cursor.execute(query, (ci_participante,))
     count = cursor.fetchone()[0] # Me devuelve el primer resultado de la tupla count
     conn.close()
     return count >= 3
@@ -38,16 +38,18 @@ def excede_horas_diarias(ci_participante, fecha):
     conn = get_connection()
     cursor = conn.cursor()
     query = """
-        SELECT SUM(TIMESTAMPDIFF(HOUR, r.hora_inicio, r.hora_fin)) AS total_horas
+        SELECT SUM(TIMESTAMPDIFF(HOUR, t.hora_inicio, t.hora_fin))
         FROM reserva r
         JOIN turno t ON r.id_turno = t.id_turno
-        JOIN reserva_parcicipante rp ON r.id_reserva = rp.id_reserva
+        JOIN reserva_participante rp ON r.id_reserva = rp.id_reserva
         WHERE rp.ci_participante = %s
         AND r.fecha = %s
-        AND r.estado = 'activa';
     """
+    
     cursor.execute(query, (ci_participante, fecha))
-    total_horas = cursor.fetchone()[0] or 0  # Si es none, son 0 horas, sirve para el return
+    resultado = cursor.fetchone()
+    total_horas = resultado[0] if resultado and resultado[0] is not None else 0 # Si es none, son 0 horas, sirve para el return
+    # aca le agregue una validacion porque si no daba salida la orden, se rompia el codigo, entonces ahora si no da salida, le establezco 0, como valor definido
     conn.close()
     return total_horas >= 2
 
@@ -57,7 +59,7 @@ def sala_ocupada(nombre_sala, id_turno, fecha):
     cursor = conn.cursor()
     query = """
         SELECT 1
-        FROM reserva 
+        FROM reserva r
         WHERE nombre_sala = %s
         AND id_turno = %s
         AND r.fecha = %s
@@ -89,11 +91,13 @@ def validar_tipo_sala(ci_participante, nombre_sala):
     conn = get_connection()
     cursor = conn.cursor()
     query = """
-        SELECT s.tipo_sala, pa.tipo, pp.rol
-        FROM sala s
-        JOIN participante_programa_academico pp on pp.nombre_programa = s.nombre_sala
-        JOIN programa_academico pa ON pa.nombre_programa = pp.nombre_programa
-        WHERE pp.ci_particiánte = %s AND s.nombre_sala = %s;
+        SELECT s.tipo_sala, pa.tipo AS tipo_programa, pp.rol
+        FROM participante_programa_academico pp
+        JOIN programa_academico pa on pa.nombre_programa = pp.nombre_programa
+        JOIN participante p ON p.ci = pp.ci_participante
+        JOIN sala s on s.nombre_sala = %s
+        WHERE p.ci = %s;
+        LIMIT 1;
     """
     cursor.execute(query, (ci_participante, nombre_sala))
     result = cursor.fetchone()

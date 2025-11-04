@@ -1,4 +1,5 @@
 from backend.db_connection import get_db_connection, close_connection
+from mysql.connector import Error
 from backend.logs import registrar_log
 from backend.validaciones import (
     tiene_sancion_activa,
@@ -12,7 +13,7 @@ from backend.validaciones import (
 
 
 
-def crear_reserva(ci_participante, nombre_sala, id_turno, fecha, cantidad_participantes):
+def crear_reserva(ci_participante, nombre_sala, id_turno, fecha, cantidad_participantes, estado = "activa"):
     accion = "Crear reserva"
     
     if not fecha_valida(fecha):
@@ -58,10 +59,10 @@ def crear_reserva(ci_participante, nombre_sala, id_turno, fecha, cantidad_partic
                 (SELECT edificio FROM sala WHERE nombre_sala = %s),
                 %s, 
                 %s, 
-                'activa');
+                %s);
         """
         # Para el edificio se hace un subquery, ya que no es un input del usuario
-        cursor.execute(query, (nombre_sala, nombre_sala, fecha, id_turno))
+        cursor.execute(query, (nombre_sala, nombre_sala, fecha, id_turno, estado))
         id_reserva = cursor.lastrowid # Guarda el id de la reserva recién creada
 
         # Ahora insertto al participante en la tabla reserva_participante
@@ -73,15 +74,94 @@ def crear_reserva(ci_participante, nombre_sala, id_turno, fecha, cantidad_partic
         conn.commit()
         conn.close()
         registrar_log(ci_participante, accion, "éxito", f"Reserva creada (ID {id_reserva})")
-        return "Reserva creada exitosamente."
+        return {"id_reserva": id_reserva, "mensaje": "Reserva creada exitosamente."}
     
     except Exception as e:
         # Si hay un error, hago rollback y registro el log
         if conn:
             conn.rollback()
         registrar_log(ci_participante, accion, "error", f"Error SQL: {e}")
+        print("Error MySQL:", e)
         return "Ocurrió un error al crear la reserva. Intente nuevamente más tarde."
     
     finally:
         if conn and conn.is_connected():
             close_connection(conn)
+
+def eliminar_reserva(id_reserva):
+    try : 
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        sql = "UPDATE reserva SET estado = 'cancelada' WHERE id_reserva = %s"
+        cursor.execute(sql, (id_reserva,))
+        # LA coma va porque cursor.execute espera valores en forma de tupla
+        connection.commit()
+
+        if cursor.rowcount > 0:
+        # Esto indica la cantidad de filas afectadas por la instruccion
+            registrar_log(None, "eliminar_reserva", "exito", f"Reserda {id_reserva} cancelada correctamente")
+            return f"Reserva {id_reserva} cancelada correctamente."
+        else: 
+            registrar_log(None, "eliminar_reserva", "error", f"No se encontro la reserva {id_reserva}")
+            return f"No se encontro la reserva con ID {id_reserva}."
+        
+    except Error as e:
+        registrar_log("eliminar reserva", "error", f"Error al cancelar reserva {id_reserva}")
+        return f"Error al cancelar la reserva: {e}"
+        # Con el {e} muestro el error que ocurre (lo hace el conector)
+
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+            # Por ultimo verifico la conexion y la cierro para salir
+
+def modificar_reserva(id_reserva, nombre_sala = None, fecha = None, id_turno = None, estado = None):
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        campos = []
+        #campos a modificar
+        valores = []
+        #valores a agregar
+
+        if nombre_sala:
+            campos.append("nombre_sala = %s")
+            valores.append(nombre_sala)
+            #tambien tengo que cambiar el edificio, lo puedo hacer con una consulta simple
+            campos.append("edificio = (SELECT edificio FROM sala WHERE nombre_sala = %s)")
+            valores.append(nombre_sala)
+        if fecha:
+            campos.append("fecha = %s")
+            valores.append(fecha)
+        if id_turno:
+            campos.append("id_turno = %s")
+            valores.append(id_turno)
+        if estado:
+            campos.append("estado = %s")
+            valores.append(estado)
+        if not campos:
+            registrar_log("modificar_reserva", "error", f"No se proporcionaron campos a modificar para reserva {id_reserva}")
+            return "No se proporcionaron datos para modificar"
+        
+        #En caso que todo salio bien
+        valores.append(id_reserva)
+        sql = f"UPDATE reserva SET {', '.join(campos)} WHERE id_reserva = %s"
+        # El método .join() une todos los elementos de una lista en una sola cadena de texto, 
+        # separándolos con lo que esta entre comillas.
+        cursor.execute(sql, valores)
+        connection.commit()
+
+        registrar_log(None, "modificar_reserva", "exito", f"Reserva {id_reserva} modificada con exito.")
+        return f"Reserva {id_reserva} modificada correctamenet."
+    
+    except Error as e:
+        registrar_log(None, "modificar_reserva", "error", f"Error al modificar la reserva {id_reserva}.")
+        return f"Error al modificar la reserva {e}."
+    
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
