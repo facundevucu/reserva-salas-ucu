@@ -1,26 +1,22 @@
 import mysql.connector
 from mysql.connector import Error
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 def get_db_connection():
     """Establece y retorna una conexión a la base de datos MySQL."""
     try:
         connection = mysql.connector.connect(
-            host=os.getenv('DB_HOST', "localhost"),
-            user=os.getenv('DB_USER', "root"),
-            password=os.getenv('DB_PASSWORD', "rootpassword"),
-            database=os.getenv('DB_NAME', "reserva_salas_ucu_db"),
-            port=int(os.getenv('DB_PORT', 3306)),
-            auth_plugin='mysql_native_password'  # 👈 fuerza el plugin correcto
+            host="localhost",
+            user="root",
+            password="",
+            database= "reserva_salas_ucu_db",
+            port= 3306,
+            auth_plugin='mysql_native_password'  
         )
         if connection.is_connected():
-            print("✅ Conexión exitosa a la base de datos MySQL")
+            print(" Conexión exitosa a la base de datos MySQL")
             return connection
     except Error as e:
-        print(f"❌ Error al conectar con MySQL: {e}")
+        print(f" Error al conectar con MySQL: {e}")
         return None
     
 def close_connection(connection):
