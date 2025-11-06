@@ -408,6 +408,199 @@ def modificar_sala(nombre_sala, edificio, capacidad=None, tipo_sala=None):
         if connection and connection.is_connected():
             cursor.close()
             connection.close()
+            
+
+
+# ABM de SANCIONES (creación, baja, odificación) -----------------------
+
+
+from backend.db_connection import get_db_connection, close_connection
+from mysql.connector import Error
+from backend.logs import registrar_log
+from backend.validaciones import (
+    tiene_sancion_activa,
+    fecha_valida
+)
+
+def crear_sancion(ci_participante, motivo, fecha_inicio, fecha_fin=None, estado="activa"):
+    """
+    Crea una sanción para un participante.
+    - Valida fechas, orden cronológico y que no exista una sanción activa simultánea.
+    - Por defecto crea en estado 'activa'.
+    """
+    accion = "crear_sancion"
+    conn = None
+
+    # Validaciones de negocio
+    if not fecha_valida(fecha_inicio) or (fecha_fin and not fecha_valida(fecha_fin)):
+        registrar_log(ci_participante, accion, "error", "Fecha(s) inválida(s)")
+        return "Alguna de las fechas indicadas no es válida."
+
+    if fecha_fin and fecha_fin < fecha_inicio:
+        registrar_log(ci_participante, accion, "error", "Rango de fechas inválido")
+        return "La fecha de fin no puede ser anterior a la fecha de inicio."
+
+    if tiene_sancion_activa(ci_participante):
+        registrar_log(ci_participante, accion, "error", "Sanción ya activa")
+        return "El participante ya tiene una sanción activa."
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        sql = """
+            INSERT INTO sancion (ci_participante, motivo, fecha_inicio, fecha_fin, estado)
+            VALUES (%s, %s, %s, %s, %s)
+        """
+        cursor.execute(sql, (ci_participante, motivo, fecha_inicio, fecha_fin, estado))
+        conn.commit()
+        id_sancion = cursor.lastrowid
+
+        registrar_log(ci_participante, accion, "éxito", f"Sanción creada (ID {id_sancion})")
+        return {"id_sancion": id_sancion, "mensaje": "Sanción creada correctamente."}
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        registrar_log(ci_participante, accion, "error", f"Error SQL: {e}")
+        return f"Ocurrió un error al crear la sanción: {e}"
+
+    finally:
+        if conn and conn.is_connected():
+            close_connection(conn)
+
+
+def levantar_sancion(id_sancion):
+    """
+    Levanta (finaliza) una sanción: pasa a 'inactiva' y fija fecha_fin = CURDATE().
+    No borra el registro para conservar trazabilidad.
+    """
+    accion = "levantar_sancion"
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        sql = """
+            UPDATE sancion
+            SET estado = 'inactiva', fecha_fin = CURDATE()
+            WHERE id_sancion = %s AND estado = 'activa'
+        """
+        cursor.execute(sql, (id_sancion,))
+        connection.commit()
+
+        if cursor.rowcount > 0:
+            registrar_log(None, accion, "éxito", f"Sanción {id_sancion} levantada")
+            return f"Sanción {id_sancion} levantada correctamente."
+        else:
+            registrar_log(None, accion, "error", f"No se pudo levantar sanción {id_sancion}")
+            return "No se encontró una sanción activa con ese ID."
+
+    except Error as e:
+        if connection:
+            connection.rollback()
+        registrar_log(None, accion, "error", f"Error al levantar sanción {id_sancion}: {e}")
+        return f"Error al levantar la sanción: {e}"
+
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+
+
+def eliminar_sancion(id_sancion):
+    """
+    Baja lógica de la sanción (marca 'anulada'). Si preferís borrado físico, cambia por DELETE.
+    """
+    accion = "eliminar_sancion"
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        sql = "UPDATE sancion SET estado = 'anulada' WHERE id_sancion = %s"
+        cursor.execute(sql, (id_sancion,))
+        connection.commit()
+
+        if cursor.rowcount > 0:
+            registrar_log(None, accion, "éxito", f"Sanción {id_sancion} anulada")
+            return f"Sanción {id_sancion} anulada correctamente."
+        else:
+            registrar_log(None, accion, "error", f"No existe sanción {id_sancion}")
+            return f"No se encontró sanción con ID {id_sancion}."
+
+    except Error as e:
+        if connection:
+            connection.rollback()
+        registrar_log(None, accion, "error", f"Error al anular sanción {id_sancion}: {e}")
+        return f"Error al anular la sanción: {e}"
+
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+
+
+def modificar_sancion(id_sancion, motivo=None, fecha_inicio=None, fecha_fin=None, estado=None):
+    """
+    Modifica campos de la sanción. Valida fechas si se pasan y orden cronológico.
+    """
+    accion = "modificar_sancion"
+    connection = None
+
+    # Validaciones simples de fechas si vienen informadas
+    if fecha_inicio and not fecha_valida(fecha_inicio):
+        registrar_log(None, accion, "error", f"fecha_inicio inválida para sanción {id_sancion}")
+        return "La fecha de inicio no es válida."
+    if fecha_fin and not fecha_valida(fecha_fin):
+        registrar_log(None, accion, "error", f"fecha_fin inválida para sanción {id_sancion}")
+        return "La fecha de fin no es válida."
+    if fecha_inicio and fecha_fin and fecha_fin < fecha_inicio:
+        registrar_log(None, accion, "error", f"Rango de fechas inválido en sanción {id_sancion}")
+        return "La fecha de fin no puede ser anterior a la fecha de inicio."
+
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        campos = []
+        valores = []
+
+        if motivo:
+            campos.append("motivo = %s")
+            valores.append(motivo)
+        if fecha_inicio:
+            campos.append("fecha_inicio = %s")
+            valores.append(fecha_inicio)
+        if fecha_fin is not None:  # permitir setear a NULL
+            campos.append("fecha_fin = %s")
+            valores.append(fecha_fin)
+        if estado:
+            # Validar estados permitidos si querés: activa/inactiva/anulada
+            campos.append("estado = %s")
+            valores.append(estado)
+
+        if not campos:
+            registrar_log(None, accion, "error", f"Sin campos a modificar en sanción {id_sancion}")
+            return "No se proporcionaron datos para modificar."
+
+        valores.append(id_sancion)
+        sql = f"UPDATE sancion SET {', '.join(campos)} WHERE id_sancion = %s"
+        cursor.execute(sql, valores)
+        connection.commit()
+
+        registrar_log(None, accion, "éxito", f"Sanción {id_sancion} modificada")
+        return f"Sanción {id_sancion} modificada correctamente."
+
+    except Error as e:
+        if connection:
+            connection.rollback()
+        registrar_log(None, accion, "error", f"Error al modificar sanción {id_sancion}: {e}")
+        return f"Error al modificar la sanción: {e}"
+
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+
 
 
 
