@@ -1,4 +1,4 @@
-from backend.logica import crear_reserva, modificar_reserva, eliminar_reserva
+from backend.abm import crear_reserva, modificar_reserva, eliminar_reserva
 from backend.db_connection import get_db_connection
 
 def registrar_log_manual(ci_participante, accion, estado, detalle):
