@@ -44,6 +44,7 @@ def excede_horas_diarias(ci_participante, fecha):
         JOIN reserva_participante rp ON r.id_reserva = rp.id_reserva
         WHERE rp.ci_participante = %s
         AND r.fecha = %s
+        AND r.estado = 'activa'
     """
     
     cursor.execute(query, (ci_participante, fecha))
@@ -82,9 +83,14 @@ def excede_capacidad(nombre_sala, cantidad_participantes):
         WHERE nombre_sala = %s;
     """
     cursor.execute(query, (nombre_sala,))
-    capacidad = cursor.fetchone()[0]
-    cursor.close()
-    return cantidad_participantes > capacidad
+    resultado = cursor.fetchone()
+    #esta parte se modifico para que si alguien pasa un nombre de sala que no existe, no tire error
+    if not resultado:
+        conn.close()
+        return False  # si la sala no existe, no excede capacidad
+    capacidad = resultado[0]
+    conn.close()
+    return cantidad_participantes > capacidad # devuelvo si la cantidad de participantes excede la capacidad
 
 # Restriccion por tipo de sala
 def validar_tipo_sala(ci_participante, nombre_sala):
@@ -96,10 +102,10 @@ def validar_tipo_sala(ci_participante, nombre_sala):
         JOIN programa_academico pa on pa.nombre_programa = pp.nombre_programa
         JOIN participante p ON p.ci = pp.ci_participante
         JOIN sala s on s.nombre_sala = %s
-        WHERE p.ci = %s;
+        WHERE p.ci = %s
         LIMIT 1;
     """
-    cursor.execute(query, (ci_participante, nombre_sala))
+    cursor.execute(query, (nombre_sala, ci_participante))
     result = cursor.fetchone()
     conn.close()
     # Mi result va a ser una tupla (tipo_sala, tipo_participante, rol) 
@@ -131,3 +137,103 @@ def fecha_valida(fecha):
     valido = cursor.fetchone()[0]
     conn.close()
     return bool(valido)
+
+# Luego de armadas las ABM, el equipo se dio cuenta de que podiamos
+# ahorrarnos mucho trabajo si crearamos las validaciones para evitar
+# tener que definir manejo de errores en cada ABM.
+
+# Asi que todas las funciones de validacion van aca, y las ABM's las llaman
+# antes de hacer cualquier operacion en la base de datos.
+
+def existe_participante(ci_participante):
+    conn = get_connection()
+    cursor = conn.cursor()
+    query = "SELECT 1 FROM participante WHERE ci = %s;"
+    cursor.execute(query, (ci_participante,))
+    existe = cursor.fetchone()
+    conn.close()
+    return existe is not None
+
+def existe_sala(nombre_sala):
+    conn = get_connection()
+    cursor = conn.cursor()
+    query = "SELECT 1 FROM sala WHERE nombre_sala = %s;"
+    cursor.execute(query, (nombre_sala,))
+    existe = cursor.fetchone()
+    conn.close()
+    return existe is not None
+
+def turno_valido(id_turno):
+    conn = get_connection()
+    cursor = conn.cursor()
+    query = """
+        sELECT hora_inicio, hora_fin
+        FROM turno
+        WHERE id_turno = %s;"""
+    cursor.execute(query, (id_turno,))
+    valido = cursor.fetchone()
+    conn.close()
+
+    if not valido:
+        return False
+    hora_inicio, hora_fin = valido # valido es una tupla con hora_inicio y hora_fin
+    #por ultimo verifico que la hora de inicio sea menor a la de fin
+    return hora_inicio < hora_fin
+
+def sancion_valida(ci_participante, fecha_inicio, fecha_fin):
+    # fechas coherentes
+    if fecha_fin < fecha_inicio:
+        return False
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    # hago una query para ver si hay alguna sancion que se solape con el rango dado
+    query = """
+        SELECT 1
+        FROM sancion_participante
+        WHERE ci_participante = %s
+        AND (
+            (fecha_inicio <= %s AND fecha_fin >= %s)
+            OR (fecha_inicio <= %s AND fecha_fin >= %s)
+        );
+    """
+    cursor.execute(query, (ci_participante, fecha_inicio, fecha_inicio, fecha_fin, fecha_fin))
+    solapada = cursor.fetchone()
+    conn.close()
+
+    # No debe haber solapamiento
+    # si fetchone devuelve algo, es que hay solapamiento
+    return solapada is None
+
+def reserva_existente(id_reserva):
+    conn = get_connection()
+    cursor = conn.cursor()
+    query = "SELECT 1 FROM reserva WHERE id_reserva = %s;"
+    cursor.execute(query, (id_reserva,))
+    existe = cursor.fetchone()
+    conn.close()
+    return existe is not None
+
+def estado_valido(estado, tabla):
+    # creo un diccionario de estados permitidos
+    # una especie de catalogo
+    estados_permitidos = {
+        "reserva": ["activa", "cancelada", "sin_asistencia", "finalizada"],
+        "sancion": ["activa", "inactiva", "anulada"]
+    }
+    # con esta funcion me aseguro que cuando modifique o cree una reserva
+    # o sancion, el estado sea uno de los permitidos
+    # me va a servir para las sanciones, que segun el profe son automaticas
+    # si la persona no esta a la hora marcada en la sala
+    if tabla not in estados_permitidos:
+        return False
+    return estado in estados_permitidos[tabla]
+
+def participante_activo(ci_participante):
+    conn = get_connection()
+    cursor = conn.cursor()
+    # como es corta la consulta, no uso query
+    cursor.execute("SELECT activo FROM participante WHERE ci = %s;", (ci_participante,))
+    result = cursor.fetchone()
+    conn.close()
+    return result and result[0] == 1
