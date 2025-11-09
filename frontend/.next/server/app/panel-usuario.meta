@@ -1,0 +1,14 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/panel-usuario/layout,_N_T_/panel-usuario/page,_N_T_/panel-usuario"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/panel-usuario/__PAGE__",
+    "/panel-usuario",
+    "/_index"
+  ]
+}
