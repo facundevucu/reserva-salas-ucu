@@ -5,6 +5,7 @@ use reserva_salas_ucu_db;
 create table login (
     correo VARCHAR(30),
     contraseña VARCHAR(30),
+    rol ENUM('admin', 'usuario') NOT NULL,
     PRIMARY KEY (correo)
 );
 

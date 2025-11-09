@@ -1,76 +1,70 @@
+from flask import Flask, request, jsonify
 from backend.logica import crear_reserva
-from backend import reportes  
+from backend import reportes
+from flask_cors import CORS
+from backend.db_connection import get_db_connection
 
-def mostrar_menu_principal():
-    print("\n=== Sistema de Reserva de Salas UCU ===")
-    print("1. Crear nueva reserva")
-    print("2. Ver reportes")
-    print("3. Salir")
+app = Flask(__name__)
+CORS(app)
 
+@app.route("/")
+def index():
+    return "Sistema de Reserva de Salas UCU - API activa"
 
-def menu_reportes():
-    """Muestra el submenú de reportes."""
-    while True:
-        print("\n=== Reportes disponibles ===")
-        print("1. Salas más reservadas")
-        print("2. Turnos más demandados")
-        print("3. Promedio de participantes por sala")
-        print("4. Reservas por carrera y facultad")
-        print("5. Porcentaje de ocupación por edificio")
-        print("6. Reservas y asistencias por tipo y rol")
-        print("7. Sanciones por tipo y rol")
-        print("8. Porcentaje de reservas utilizadas vs no utilizadas")
-        print("9. Volver al menú principal")
+@app.route("/login", methods=["POST"])
+def login():
+    data = request.get_json()
+    email = data.get("email")
+    password = data.get("password")
 
-        opcion = input("Seleccione un reporte: ")
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    query = "SELECT correo, contraseña, rol FROM login WHERE correo = %s AND contraseña = %s"
+    cursor.execute(query, (email, password))
+    user = cursor.fetchone()
+    cursor.close()
+    conn.close()
 
-        if opcion == "1":
-            reportes.salas_mas_reservadas()
-        elif opcion == "2":
-            reportes.turnos_mas_demandados()
-        elif opcion == "3":
-            reportes.promedio_participantes_por_sala()
-        elif opcion == "4":
-            reportes.reservas_por_carrera_y_facultad()
-        elif opcion == "5":
-            reportes.porcentaje_ocupacion_por_edificio()
-        elif opcion == "6":
-            reportes.reservas_y_asistencias_por_tipo_y_rol()
-        elif opcion == "7":
-            reportes.sanciones_por_tipo_y_rol()
-        elif opcion == "8":
-            reportes.porcentaje_reservas_utilizadas()
-        elif opcion == "9":
-            break
-        else:
-            print("Opción no válida. Intente nuevamente.")
+    if user:
+        rol = user[2]
+        return jsonify({"success": True, "rol": rol})
+    else:
+        return jsonify({"success": False, "message": "Credenciales incorrectas"}), 401
 
+@app.route("/crear_reserva", methods=["POST"])
+def api_crear_reserva():
+    data = request.get_json()
+    ci_participante = data.get("ci_participante")
+    nombre_sala = data.get("nombre_sala")
+    id_turno = data.get("id_turno")
+    fecha = data.get("fecha")
+    cantidad_participantes = data.get("cantidad_participantes")
 
-def main():
-    while True:
-        mostrar_menu_principal()
-        opcion = input("Seleccione una opción: ")
+    resultado = crear_reserva(ci_participante, nombre_sala, id_turno, fecha, cantidad_participantes)
+    return jsonify({"resultado": resultado})
 
-        if opcion == '1':
-            ci_participante = input("Ingrese su CI de participante: ")
-            nombre_sala = input("Ingrese el nombre de la sala: ")
-            id_turno = input("Ingrese el ID del turno: ")
-            fecha = input("Ingrese la fecha (YYYY-MM-DD): ")
-            cantidad_participantes = int(input("Ingrese la cantidad de participantes: "))
+@app.route("/reportes/<nombre>", methods=["GET"])
+def api_reportes(nombre):
+    if nombre == "salas_mas_reservadas":
+        resultado = reportes.salas_mas_reservadas()
+    elif nombre == "turnos_mas_demandados":
+        resultado = reportes.turnos_mas_demandados()
+    elif nombre == "promedio_participantes_por_sala":
+        resultado = reportes.promedio_participantes_por_sala()
+    elif nombre == "reservas_por_carrera_y_facultad":
+        resultado = reportes.reservas_por_carrera_y_facultad()
+    elif nombre == "porcentaje_ocupacion_por_edificio":
+        resultado = reportes.porcentaje_ocupacion_por_edificio()
+    elif nombre == "reservas_y_asistencias_por_tipo_y_rol":
+        resultado = reportes.reservas_y_asistencias_por_tipo_y_rol()
+    elif nombre == "sanciones_por_tipo_y_rol":
+        resultado = reportes.sanciones_por_tipo_y_rol()
+    elif nombre == "porcentaje_reservas_utilizadas":
+        resultado = reportes.porcentaje_reservas_utilizadas()
+    else:
+        return jsonify({"error": "Reporte no encontrado"}), 404
 
-            resultado = crear_reserva(ci_participante, nombre_sala, id_turno, fecha, cantidad_participantes)
-            print("\n" + resultado)
-
-        elif opcion == '2':
-            menu_reportes()
-
-        elif opcion == '3':
-            print("Saliendo del sistema. ¡Hasta luego!")
-            break
-
-        else:
-            print("Opción no válida. Por favor, intente nuevamente.")
-
+    return jsonify({"resultado": resultado})
 
 if __name__ == "__main__":
-    main()
+    app.run(debug=True)

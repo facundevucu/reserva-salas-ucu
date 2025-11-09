@@ -53,14 +53,14 @@ INSERT INTO participante (ci, nombre, apellido, email) VALUES
     (78901234, 'Valentina', 'López', 'valentina.lopez@ucu.edu.uy');
 
 -- Login
-INSERT INTO login (correo, contraseña) VALUES
-    ('facundo.gonzales@ucu.edu.uy', 'pass1234'),
-    ('ana.perez@ucu.edu.uy', 'pass2345'),
-    ('maria.gonzalez@ucu.edu.uy', 'pass3456'),
-    ('carlos.rodriguez@ucu.edu.uy', 'pass4567'),
-    ('laura.martinez@ucu.edu.uy', 'pass5678'),
-    ('javier.fernandez@ucu.edu.uy', 'pass6789'),
-    ('valentina.lopez@ucu.edu.uy', 'pass7890');
+INSERT INTO login (correo, contraseña, rol) VALUES
+    ('facundo.gonzales@ucu.edu.uy', 'pass1234', 'admin'),
+    ('ana.perez@ucu.edu.uy', 'pass2345', 'usuario'),
+    ('maria.gonzalez@ucu.edu.uy', 'pass3456', 'usuario'),
+    ('carlos.rodriguez@ucu.edu.uy', 'pass4567', 'usuario'),
+    ('laura.martinez@ucu.edu.uy', 'pass5678', 'usuario'),
+    ('javier.fernandez@ucu.edu.uy', 'pass6789', 'usuario'),
+    ('valentina.lopez@ucu.edu.uy', 'pass7890', 'usuario');
 
 -- Turnos
 INSERT INTO turno (hora_inicio, hora_fin) VALUES
