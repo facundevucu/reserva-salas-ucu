@@ -1,13 +1,14 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from backend.logica import crear_reserva
 from backend import reportes
 from flask_cors import CORS
 from backend.db_connection import get_db_connection
+import os
 
 app = Flask(__name__)
 CORS(app)
 
-@app.route("/")
+@app.route("/api-status")
 def index():
     return "Sistema de Reserva de Salas UCU - API activa"
 
@@ -65,6 +66,16 @@ def api_reportes(nombre):
         return jsonify({"error": "Reporte no encontrado"}), 404
 
     return jsonify({"resultado": resultado})
+
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def serve_static_files(path):
+    root_dir = os.path.dirname(os.path.abspath(__file__))
+    build_dir = os.path.join(root_dir, "frontend/out")
+    if path != "" and os.path.exists(os.path.join(build_dir, path)):
+        return send_from_directory(build_dir, path)
+    else:
+        return send_from_directory(build_dir, "index.html")
 
 if __name__ == "__main__":
     app.run(debug=True)
