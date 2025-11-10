@@ -1,0 +1,13 @@
+jsonify
+-> convierte los datos de python a formato JSON, para que el frontend los pueda entender
+Ejemplo:
+
+En python:
+datos = {"nombre": "Facundo", "edad": 20}
+
+En JSON:
+{
+  "nombre": "Facundo",
+  "edad": 20
+}
+-> Se utiliza porque las api se comunican usando JSON

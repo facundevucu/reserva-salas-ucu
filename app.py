@@ -1,6 +1,27 @@
 from flask import Flask, request, jsonify, send_from_directory
-from backend.logica import crear_reserva, crear_persona, eliminar_persona, modificar_persona
-from backend.logica import crear_sancion, modificar_sancion, eliminar_sancion, levantar_sancion
+# ------------------- IMPORTACIONES -------------------
+from backend.logica import (
+    crear_reserva, 
+    crear_persona, 
+    eliminar_persona, 
+    modificar_persona, 
+    crear_sancion, 
+    modificar_sancion, 
+    eliminar_sancion, 
+)
+from backend.validaciones import (
+    login_valido,
+    autenticar_usuario,
+    obtener_estadisticas_dashboard,
+    obtener_edificios,
+    obtener_salas,
+    obtener_participantes,
+    ci_valido,
+    participante_valido,
+    obtener_sanciones,
+    sancion_valida,
+)
+
 from backend import reportes
 from flask_cors import CORS
 from backend.db_connection import get_db_connection, close_connection
@@ -14,25 +35,32 @@ CORS(app)
 def index():
     return "Sistema de Reserva de Salas UCU - API activa"
 
+
+# ------------------- AUTENTICACIÓN -------------------
+# a partir de aqui se trabaja con la autenticación de usuarios
+# se establece la ruta para el login de usuarios
 @app.route("/login", methods=["POST"])
 def login():
     data = request.get_json()
     email = data.get("email")
     password = data.get("password")
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    query = "SELECT correo, contraseña, rol FROM login WHERE correo = %s AND contraseña = %s"
-    cursor.execute(query, (email, password))
-    user = cursor.fetchone()
-    cursor.close()
-    conn.close()
+    # Validación del input
+    if not login_valido(email, password):
+        return jsonify("Datos de login inválidos")
 
-    if user:
-        rol = user[2]
+    # Autenticación en base de datos
+    rol = autenticar_usuario(email, password)
+    if rol:
         return jsonify({"success": True, "rol": rol})
     else:
-        return jsonify({"success": False, "message": "Credenciales incorrectas"}), 401
+        return jsonify("Credenciales incorrectas")
+
+
+
+# ------------------- DISEÑO DE INTERFAZ -------------------
+# a partir de aqui se trabaja con las secciones de reportes y dashboard del frontend
+# se establecen las rutas para los reportes y el dashboard
 
 @app.route("/crear_reserva", methods=["POST"])
 def api_crear_reserva():
@@ -70,185 +98,193 @@ def listar_reportes():
 
         return jsonify({"reportes": reportes_validos})
     except Exception as e:
-        return jsonify({"error": "Error al listar reportes", "details": str(e)}), 500
+        return jsonify("Error al listar reportes.")
     
     
 @app.route("/reportes/<nombre>", methods=["GET"])
 def api_reportes(nombre):
     funcion = getattr(reportes, nombre, None)
     if not funcion:
-        return jsonify({"error": "Reporte no encontrado"}), 404
+        return jsonify("Reporte no encontrado")
     try:
         cols, rows = funcion()
         return jsonify({"columnas": cols, "filas": rows})
     except Exception as e:
-        return jsonify({"error": "Error al generar el reporte", "details": str(e)}), 500
+        return jsonify("Error al generar el reporte")
+
 
 @app.route("/api/dashboard", methods=["GET"])
 def dashboard_stats():
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
     try:
-        cursor.execute("SELECT COUNT(*) AS total FROM sala")
-        total_salas = cursor.fetchone()["total"]
-        cursor.execute("SELECT COUNT(*) AS total FROM reserva WHERE estado = 'activa'")
-        reservas_activas = cursor.fetchone()["total"]
-        cursor.execute("SELECT COUNT(*) AS total FROM participante")
-        total_participantes = cursor.fetchone()["total"]
-        cursor.execute("SELECT COUNT(*) AS total FROM sancion_participante WHERE fecha_fin >= CURDATE()")
-        sanciones_activas = cursor.fetchone()["total"]
-        result = {
-            "total_salas": total_salas,
-            "reservas_activas": reservas_activas,
-            "total_participantes": total_participantes,
-            "sanciones_activas": sanciones_activas
-        }
+        result = obtener_estadisticas_dashboard()
         return jsonify(result)
     except Exception as e:
-        return jsonify({"error": "Error al obtener estadísticas", "details": str(e)}), 500
-    finally:
-        cursor.close()
-        close_connection(conn)
+        return jsonify("Error al obtener estadísticas.")
+    
 
+# ---------------------------------------------------------------------------------------------------------------------------
+# bloque de codigo especial del frontend, sirve para que Flask muestre mi web en el navegador
+# cuando alguien entra a la app, flask busca el archivo del frontend en /out y lo muestra
+# si no lo encuentra muestra index.html que es la pagina principal
+# y si alguien entra a una ruta que empieza con /api le tira un error 404 porque esas rutas son para la API solamente
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
 def serve_static_files(path):
     if path.startswith("api"):
-        return jsonify({"error": "Not Found"}), 404
+        return jsonify("Not Found")
     root_dir = os.path.dirname(os.path.abspath(__file__))
     build_dir = os.path.join(root_dir, "frontend/out")
     if path != "" and os.path.exists(os.path.join(build_dir, path)):
         return send_from_directory(build_dir, path)
     else:
         return send_from_directory(build_dir, "index.html")
-    
+# ---------------------------------------------------------------------------------------------------------------------------
+
+
+# ------------------- EDIFICIOS Y SALAS -------------------
+# a partir de aqui se trabaja con los edificios y las salas
+# se establecen las rutas para listar edificios y salas
 @app.route("/api/edificios", methods=["GET"])
-def obtener_edificios():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT nombre_edificio FROM edificio")
-    edificios = [row[0] for row in cursor.fetchall()]
-    cursor.close()
-    conn.close()
-    return jsonify(edificios)
+def api_obtener_edificios():
+    try:
+        edificios = obtener_edificios()
+        return jsonify(edificios)
+    except Exception as e:
+        return jsonify("Error al obtener edificios.")
+
 
 @app.route("/api/salas", methods=["GET"])
-def obtener_salas():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT nombre_sala, edificio, capacidad FROM sala")
-    data = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    salas = [{"nombre": row[0], "edificio": row[1], "capacidad": row[2]} for row in data]
-    return jsonify(salas)
+def api_obtener_salas():
+    try:
+        salas = obtener_salas()
+        return jsonify(salas)
+    except Exception as e:
+        return jsonify("Error al obtener salas.")
+
+
+# ------------------- PARTICIPANTES -------------------
+# a partir de aqui se trabaja con los participantes
+# se establecen las rutas para listar, crear, modificar y eliminar participantes
+
 
 @app.route("/api/participantes", methods=["GET"])
-def obtener_participantes():
+def api_obtener_participantes():
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT ci, nombre, apellido, email FROM participante")
-        data = cursor.fetchall()
-        cursor.close()
-        close_connection(conn)
-        participantes = [{"ci": row[0], "nombre": row[1], "apellido": row[2], "email": row[3]} for row in data]
+        participantes = obtener_participantes()
         return jsonify(participantes)
     except Exception as e:
-        return jsonify({"error": "Error al obtener participantes", "details": str(e)}), 500
+        return jsonify("Error al obtener participantes.")
+
 
 @app.route("/api/participantes", methods=["POST"])
-def crear_participante():
+def api_crear_participante():
     data = request.get_json()
-    try:
-        ci = data.get("ci")
-        nombre = data.get("nombre")
-        apellido = data.get("apellido")
-        email = data.get("email")
-        resultado = crear_persona(ci, nombre, apellido, email)
-        return jsonify({"resultado": resultado})
-    except Exception as e:
-        return jsonify({"error": "Error al crear participante", "details": str(e)}), 400
+    ci = data.get("ci")
+    nombre = data.get("nombre")
+    apellido = data.get("apellido")
+    email = data.get("email")
 
-@app.route("/api/participantes/<int:ci>", methods=["PUT"])
-def modificar_participante(ci):
-    data = request.get_json()
+    if not participante_valido(ci, nombre, apellido, email):
+        return jsonify("Datos de participante inválidos")
+
+    resultado = crear_persona(ci, nombre, apellido, email)
+
+    if "correctamente" in resultado:
+        return jsonify({"mensaje": resultado})
+    else:
+        return jsonify({"error": resultado})
+
+
+@app.route("/api/participantes", methods=["GET"])
+def api_obtener_participantes():
     try:
-        nombre = data.get("nombre")
-        apellido = data.get("apellido")
-        email = data.get("email")
-        resultado = modificar_persona(ci, nombre, apellido, email)
-        return jsonify({"resultado": resultado})
+        participantes = obtener_participantes()
+        return jsonify(participantes)
     except Exception as e:
-        return jsonify({"error": "Error al modificar participante", "details": str(e)}), 400
+        return jsonify("Error al obtener participantes.")
+
 
 @app.route("/api/participantes/<int:ci>", methods=["DELETE"])
-def eliminar_participante(ci):
-    try:
-        resultado = eliminar_persona(ci)
-        return jsonify({"resultado": resultado})
-    except Exception as e:
-        return jsonify({"error": "Error al eliminar participante", "details": str(e)}), 400
+def api_eliminar_participante(ci):
+    if not ci_valido(ci):
+        return jsonify("CI inválido")
+
+    resultado = eliminar_persona(ci)
+
+    if "correctamente" in resultado:
+        return jsonify({"mensaje": resultado})
+    elif "No se encontró" in resultado:
+        return jsonify("No se encontró participante.")
+    else:
+        return jsonify("Error al eliminar participante.")
+
+
 
 # ------------------- SANCIONES -------------------
+# a partir de aqui se trabaja con las sanciones
+# se establecen las rutas para listar, crear, modificar y eliminar sanciones
 
 @app.route("/api/sanciones", methods=["GET"])
-def listar_sanciones():
+def api_listar_sanciones():
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("""
-            SELECT 
-                s.ci_participante,
-                p.nombre,
-                p.apellido,
-                DATE_FORMAT(s.fecha_inicio, '%Y-%m-%d') AS fecha_inicio,
-                DATE_FORMAT(s.fecha_fin, '%Y-%m-%d') AS fecha_fin
-            FROM sancion_participante s
-            JOIN participante p ON s.ci_participante = p.ci
-        """)
-        sanciones = cursor.fetchall()
-        close_connection(conn)
-        return jsonify(sanciones), 200
+        sanciones = obtener_sanciones()
+        return jsonify(sanciones)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify("Error al obtener sanciones.")
 
 
 @app.route("/api/sanciones", methods=["POST"])
-def crear_sancion_api():
+def api_crear_sancion():
     data = request.get_json()
     ci = data.get("ci_participante")
+    motivo = data.get("motivo")
     fecha_inicio = data.get("fecha_inicio")
     fecha_fin = data.get("fecha_fin")
 
-    if not all([ci, fecha_inicio, fecha_fin]):
-        return jsonify({"error": "Todos los campos son obligatorios"}), 400
+    if not sancion_valida(ci, fecha_inicio, fecha_fin):
+        return jsonify("Datos de sanción inválidos")
 
-    resultado = crear_sancion(ci, fecha_inicio, fecha_fin)
-    if "correctamente" in resultado or isinstance(resultado, dict):
-        return jsonify({"mensaje": resultado}), 201
-    return jsonify({"error": resultado}), 400
+    resultado = crear_sancion(ci, motivo, fecha_inicio, fecha_fin)
+
+    if "correctamente" in resultado:
+        return jsonify({"mensaje": resultado})
+    else:
+        return jsonify("Error al crear sanción.")
 
 
 @app.route("/api/sanciones/<int:ci>", methods=["PUT"])
-def modificar_sancion_api(ci):
+def api_modificar_sancion(ci):
     data = request.get_json()
     fecha_inicio = data.get("fecha_inicio")
     fecha_fin = data.get("fecha_fin")
 
+    if not sancion_valida(ci, fecha_inicio, fecha_fin, verificar_solapamiento=False):
+        return jsonify("Fechas inválidas")
+
     resultado = modificar_sancion(ci, fecha_inicio, fecha_fin)
+
     if "correctamente" in resultado:
-        return jsonify({"mensaje": resultado}), 200
-    return jsonify({"error": resultado}), 400
+        return jsonify({"mensaje": resultado})
+    elif "No se encontró" in resultado:
+        return jsonify("No se encontró sanción.")
+    else:
+        return jsonify("Error al modificar sanción.")
 
 
 @app.route("/api/sanciones/<int:ci>", methods=["DELETE"])
-def eliminar_sancion_api(ci):
-    resultado = eliminar_sancion(ci)
-    if "correctamente" in resultado:
-        return jsonify({"mensaje": resultado}), 200
-    return jsonify({"error": resultado}), 400
+def api_eliminar_sancion(ci):
+    
+    if not ci_valido(ci):
+        return jsonify("CI inválido")
 
+    resultado = eliminar_sancion(ci)
+
+    if "correctamente" in resultado:
+        return jsonify({"mensaje": resultado})
+    elif "No se encontró" in resultado:
+        return jsonify("No se encontró sanción.")
+    else:
+        return jsonify("Error al eliminar sanción.")
 
 
 

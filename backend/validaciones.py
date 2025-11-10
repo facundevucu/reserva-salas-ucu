@@ -1,4 +1,9 @@
 from backend.db_connection import get_db_connection as get_connection
+from backend.db_connection import close_connection
+from backend.db_connection import get_db_connection, close_connection
+
+
+# ---------------- PARTICIPANTES ----------------
 
 # Verificar si el usuario tiene una sanción activa
 def tiene_sancion_activa(ci_participante):
@@ -16,43 +21,52 @@ def tiene_sancion_activa(ci_participante):
     cursor.close()
     return result is not None 
 
-# No más de 3 reservas activas por semana
-def excede_reservas_semanales(ci_participante):
+# Verificar si el participante existe
+def existe_participante(ci_participante):
     conn = get_connection()
     cursor = conn.cursor()
-    query = """
-        SELECT COUNT(*)
-        FROM reserva_participante rp
-        JOIN reserva r on rp.id_reserva = r.id_reserva
-        WHERE rp.ci_participante = %s
-        AND r.estado = 'activa'
-        AND YEARWEEK(r.fecha) = YEARWEEK(CURDATE());
-    """
+    query = "SELECT 1 FROM participante WHERE ci = %s;"
     cursor.execute(query, (ci_participante,))
-    count = cursor.fetchone()[0] # Me devuelve el primer resultado de la tupla count
+    existe = cursor.fetchone()
     conn.close()
-    return count >= 3
+    return existe is not None
 
-# No más de 2 horas diarias por sala
-def excede_horas_diarias(ci_participante, fecha):
+# Verificar si el participante está activo
+def participante_activo(ci_participante):
     conn = get_connection()
     cursor = conn.cursor()
-    query = """
-        SELECT SUM(TIMESTAMPDIFF(HOUR, t.hora_inicio, t.hora_fin))
-        FROM reserva r
-        JOIN turno t ON r.id_turno = t.id_turno
-        JOIN reserva_participante rp ON r.id_reserva = rp.id_reserva
-        WHERE rp.ci_participante = %s
-        AND r.fecha = %s
-        AND r.estado = 'activa'
-    """
-    
-    cursor.execute(query, (ci_participante, fecha))
-    resultado = cursor.fetchone()
-    total_horas = resultado[0] if resultado and resultado[0] is not None else 0 # Si es none, son 0 horas, sirve para el return
-    # aca le agregue una validacion porque si no daba salida la orden, se rompia el codigo, entonces ahora si no da salida, le establezco 0, como valor definido
+    # como es corta la consulta, no uso query
+    cursor.execute("SELECT activo FROM participante WHERE ci = %s;", (ci_participante,))
+    result = cursor.fetchone()
     conn.close()
-    return total_horas >= 2
+    return result and result[0] == 1
+
+# Validar datos del participante
+def participante_valido(ci, nombre, apellido, email):
+
+    if not all([ci, nombre, apellido, email]):
+        return False
+    if not str(ci).isdigit() or len(str(ci)) < 7:
+        return False
+    if "@" not in email or "." not in email:
+        return False
+    return True
+
+# Validar CI
+def ci_valido(ci):
+    return str(ci).isdigit() and 6 <= len(str(ci)) <= 9
+
+# ---------------- SALAS ----------------
+
+# Verificar si la sala existe
+def existe_sala(nombre_sala):
+    conn = get_connection()
+    cursor = conn.cursor()
+    query = "SELECT 1 FROM sala WHERE nombre_sala = %s;"
+    cursor.execute(query, (nombre_sala,))
+    existe = cursor.fetchone()
+    conn.close()
+    return existe is not None
 
 # Verificar si la sala está disponible
 def sala_ocupada(nombre_sala, id_turno, fecha):
@@ -128,41 +142,48 @@ def validar_tipo_sala(ci_participante, nombre_sala):
     
     return False
 
-# Validar si la fecha a reservar es futura
-def fecha_valida(fecha):
+
+# ---------------- RESERVAS ----------------
+
+# No más de 3 reservas activas por semana
+def excede_reservas_semanales(ci_participante):
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT %s >= CURDATE();", (fecha,))
-    # No uso query porque es una consulta simple
-    valido = cursor.fetchone()[0]
-    conn.close()
-    return bool(valido)
-
-# Luego de armadas las ABM, el equipo se dio cuenta de que podiamos
-# ahorrarnos mucho trabajo si crearamos las validaciones para evitar
-# tener que definir manejo de errores en cada ABM.
-
-# Asi que todas las funciones de validacion van aca, y las ABM's las llaman
-# antes de hacer cualquier operacion en la base de datos.
-
-def existe_participante(ci_participante):
-    conn = get_connection()
-    cursor = conn.cursor()
-    query = "SELECT 1 FROM participante WHERE ci = %s;"
+    query = """
+        SELECT COUNT(*)
+        FROM reserva_participante rp
+        JOIN reserva r on rp.id_reserva = r.id_reserva
+        WHERE rp.ci_participante = %s
+        AND r.estado = 'activa'
+        AND YEARWEEK(r.fecha) = YEARWEEK(CURDATE());
+    """
     cursor.execute(query, (ci_participante,))
-    existe = cursor.fetchone()
+    count = cursor.fetchone()[0] # Me devuelve el primer resultado de la tupla count
     conn.close()
-    return existe is not None
+    return count >= 3
 
-def existe_sala(nombre_sala):
+# No más de 2 horas diarias por sala
+def excede_horas_diarias(ci_participante, fecha):
     conn = get_connection()
     cursor = conn.cursor()
-    query = "SELECT 1 FROM sala WHERE nombre_sala = %s;"
-    cursor.execute(query, (nombre_sala,))
-    existe = cursor.fetchone()
+    query = """
+        SELECT SUM(TIMESTAMPDIFF(HOUR, t.hora_inicio, t.hora_fin))
+        FROM reserva r
+        JOIN turno t ON r.id_turno = t.id_turno
+        JOIN reserva_participante rp ON r.id_reserva = rp.id_reserva
+        WHERE rp.ci_participante = %s
+        AND r.fecha = %s
+        AND r.estado = 'activa'
+    """
+    
+    cursor.execute(query, (ci_participante, fecha))
+    resultado = cursor.fetchone()
+    total_horas = resultado[0] if resultado and resultado[0] is not None else 0 # Si es none, son 0 horas, sirve para el return
+    # aca le agregue una validacion porque si no daba salida la orden, se rompia el codigo, entonces ahora si no da salida, le establezco 0, como valor definido
     conn.close()
-    return existe is not None
+    return total_horas >= 2
 
+# Verificar si el turno es válido
 def turno_valido(id_turno):
     conn = get_connection()
     cursor = conn.cursor()
@@ -180,31 +201,7 @@ def turno_valido(id_turno):
     #por ultimo verifico que la hora de inicio sea menor a la de fin
     return hora_inicio < hora_fin
 
-def sancion_valida(ci_participante, fecha_inicio, fecha_fin):
-    # fechas coherentes
-    if fecha_fin < fecha_inicio:
-        return False
-
-    conn = get_connection()
-    cursor = conn.cursor()
-    # hago una query para ver si hay alguna sancion que se solape con el rango dado
-    query = """
-        SELECT 1
-        FROM sancion_participante
-        WHERE ci_participante = %s
-        AND (
-            (fecha_inicio <= %s AND fecha_fin >= %s)
-            OR (fecha_inicio <= %s AND fecha_fin >= %s)
-        );
-    """
-    cursor.execute(query, (ci_participante, fecha_inicio, fecha_inicio, fecha_fin, fecha_fin))
-    solapada = cursor.fetchone()
-    conn.close()
-
-    # No debe haber solapamiento
-    # si fetchone devuelve algo, es que hay solapamiento
-    return solapada is None
-
+# Verificar si la reserva existe
 def reserva_existente(id_reserva):
     conn = get_connection()
     cursor = conn.cursor()
@@ -214,6 +211,85 @@ def reserva_existente(id_reserva):
     conn.close()
     return existe is not None
 
+# Validar si la fecha a reservar es futura
+def fecha_valida(fecha):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT %s >= CURDATE();", (fecha,))
+    # No uso query porque es una consulta simple
+    valido = cursor.fetchone()[0]
+    conn.close()
+    return bool(valido)
+
+
+# ---------------- SANCIONES ----------------
+
+# Obtener sanciones activas
+def obtener_sanciones():
+    """
+    Devuelve la lista de sanciones activas y sus datos asociados al participante.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("""
+            SELECT 
+                s.ci_participante,
+                p.nombre,
+                p.apellido,
+                DATE_FORMAT(s.fecha_inicio, '%%Y-%%m-%%d') AS fecha_inicio,
+                DATE_FORMAT(s.fecha_fin, '%%Y-%%m-%%d') AS fecha_fin
+            FROM sancion_participante s
+            JOIN participante p ON s.ci_participante = p.ci
+        """)
+        sanciones = cursor.fetchall()
+        return sanciones
+    except Exception as e:
+        raise e
+    finally:
+        cursor.close()
+        close_connection(conn)
+
+# Validar sanción (fechas y solapamiento)
+def sancion_valida(ci_participante=None, fecha_inicio=None, fecha_fin=None, verificar_solapamiento=True):
+
+    if not fecha_inicio or not fecha_fin:
+        return False
+    if fecha_fin < fecha_inicio:
+        return False
+
+    if verificar_solapamiento and ci_participante:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        query = """
+            SELECT 1
+            FROM sancion_participante
+            WHERE ci_participante = %s
+            AND (
+                (fecha_inicio <= %s AND fecha_fin >= %s)  -- Se solapa por dentro
+                OR (fecha_inicio <= %s AND fecha_fin >= %s)  -- Se solapa al final
+                OR (%s <= fecha_inicio AND %s >= fecha_fin)  -- Contiene completamente
+            )
+        """
+        cursor.execute(query, (
+            ci_participante,
+            fecha_fin, fecha_inicio,
+            fecha_inicio, fecha_fin,
+            fecha_inicio, fecha_fin
+        ))
+        result = cursor.fetchone()
+        cursor.close()
+        close_connection(conn)
+        
+        if result:
+            return False
+
+    return True
+
+
+# ---------------- GENERALES ----------------
+
+# Validar estado para reservas y sanciones
 def estado_valido(estado, tabla):
     # creo un diccionario de estados permitidos
     # una especie de catalogo
@@ -229,11 +305,121 @@ def estado_valido(estado, tabla):
         return False
     return estado in estados_permitidos[tabla]
 
-def participante_activo(ci_participante):
-    conn = get_connection()
+# Validar login
+def login_valido(email, password):
+    if not email or not password:
+        return False
+    if "@" not in email or "." not in email:
+        return False
+    if len(password) < 4:
+        return False
+    return True
+
+# Autenticar usuario
+def autenticar_usuario(email, password):
+    """
+    Verifica las credenciales del usuario en la base de datos.
+    Retorna el rol si es correcto o None si no lo es.
+    """
+    conn = get_db_connection()
     cursor = conn.cursor()
-    # como es corta la consulta, no uso query
-    cursor.execute("SELECT activo FROM participante WHERE ci = %s;", (ci_participante,))
-    result = cursor.fetchone()
+    query = "SELECT rol FROM login WHERE correo = %s AND contraseña = %s"
+    cursor.execute(query, (email, password))
+    user = cursor.fetchone()
+    cursor.close()
     conn.close()
-    return result and result[0] == 1
+
+    if user:
+        return user[0]
+    return None
+
+# Obtener estadísticas para el dashboard
+def obtener_estadisticas_dashboard():
+    """
+    Devuelve métricas generales del sistema: cantidad de salas, reservas activas,
+    participantes y sanciones activas.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT COUNT(*) AS total FROM sala")
+        total_salas = cursor.fetchone()["total"]
+
+        cursor.execute("SELECT COUNT(*) AS total FROM reserva WHERE estado = 'activa'")
+        reservas_activas = cursor.fetchone()["total"]
+
+        cursor.execute("SELECT COUNT(*) AS total FROM participante")
+        total_participantes = cursor.fetchone()["total"]
+
+        cursor.execute("SELECT COUNT(*) AS total FROM sancion_participante WHERE fecha_fin >= CURDATE()")
+        sanciones_activas = cursor.fetchone()["total"]
+
+        return {
+            "total_salas": total_salas,
+            "reservas_activas": reservas_activas,
+            "total_participantes": total_participantes,
+            "sanciones_activas": sanciones_activas
+        }
+
+    except Exception as e:
+        # Re-lanzamos el error para manejarlo en app.py
+        raise e
+    finally:
+        cursor.close()
+        close_connection(conn)
+
+# ---------------- CONSULTAS AUXILIARES ----------------
+
+# Aca algunas que podrian ir a logica, pero por organizacion las dejamos aca,
+# para no confundir con los ABM
+
+
+def obtener_edificios():
+    """
+    Devuelve una lista con los nombres de todos los edificios registrados.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT nombre_edificio FROM edificio")
+        edificios = [row[0] for row in cursor.fetchall()]
+        return edificios
+    except Exception as e:
+        raise e
+    finally:
+        cursor.close()
+        close_connection(conn)
+
+def obtener_salas():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT nombre_sala, edificio, capacidad FROM sala")
+        data = cursor.fetchall()
+        salas = [
+            {"nombre": row[0], "edificio": row[1], "capacidad": row[2]}
+            for row in data
+        ]
+        return salas
+    except Exception as e:
+        raise e
+    finally:
+        cursor.close()
+        close_connection(conn)
+
+def obtener_participantes():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT ci, nombre, apellido, email FROM participante")
+        data = cursor.fetchall()
+        participantes = [
+            {"ci": row[0], "nombre": row[1], "apellido": row[2], "email": row[3]}
+            for row in data
+        ]
+        return participantes
+    except Exception as e:
+        raise e
+    finally:
+        cursor.close()
+        close_connection(conn)
