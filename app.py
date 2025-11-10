@@ -193,16 +193,7 @@ def api_crear_participante():
         return jsonify({"mensaje": resultado})
     else:
         return jsonify({"error": resultado})
-
-
-@app.route("/api/participantes", methods=["GET"])
-def api_obtener_participantes():
-    try:
-        participantes = obtener_participantes()
-        return jsonify(participantes)
-    except Exception as e:
-        return jsonify("Error al obtener participantes.")
-
+    
 
 @app.route("/api/participantes/<int:ci>", methods=["DELETE"])
 def api_eliminar_participante(ci):
