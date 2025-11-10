@@ -76,6 +76,27 @@ def serve_static_files(path):
         return send_from_directory(build_dir, path)
     else:
         return send_from_directory(build_dir, "index.html")
+    
+@app.route("/api/edificios", methods=["GET"])
+def obtener_edificios():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT nombre_edificio FROM edificio")
+    edificios = [row[0] for row in cursor.fetchall()]
+    cursor.close()
+    conn.close()
+    return jsonify(edificios)
+
+@app.route("/api/salas", methods=["GET"])
+def obtener_salas():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT nombre_sala, edificio, capacidad FROM sala")
+    data = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    salas = [{"nombre": row[0], "edificio": row[1], "capacidad": row[2]} for row in data]
+    return jsonify(salas)
 
 if __name__ == "__main__":
     app.run(debug=True)
