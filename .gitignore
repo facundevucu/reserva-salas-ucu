@@ -1,22 +1,23 @@
-.DS_Store
+# ======== FLASK ========
+__pycache__/
+*.pyc
+.env
 
-# Node.js
+# ======== NEXT.JS / REACT ========
 node_modules/
-npm-debug.log
-.DS_Store
-
-# Next.js
 .next/
 out/
 frontend/node_modules/
 frontend/.next/
 frontend/out/
 
-# Python / Flask
-__pycache__/
-*.pyc
-.env
-
-# Varios
+# ======== LOGS / SISTEMA ========
 *.log
+.DS_Store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
+# ======== VSCODE / EDITOR ========
+.vscode/
+.idea/
