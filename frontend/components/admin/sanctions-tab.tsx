@@ -24,6 +24,12 @@ export function SanctionsTab() {
     fecha_fin: "",
   })
 
+  const parseDate = (dateString: string) => {
+    if (!dateString) return null;
+    const parsed = new Date(dateString);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  };
+
   useEffect(() => {
     fetchSanctions()
   }, [])
@@ -149,9 +155,12 @@ export function SanctionsTab() {
 
       <div className="grid gap-4">
         {sanctions.map((sanction) => {
-          const startDate = new Date(sanction.fecha_inicio)
-          const endDate = new Date(sanction.fecha_fin)
-          const duration = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24))
+          const startDate = parseDate(sanction.fecha_inicio)
+          const endDate = parseDate(sanction.fecha_fin)
+          const duration =
+            startDate && endDate
+              ? Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24))
+              : 0
           return (
             <Card key={`${sanction.ci_participante}-${sanction.fecha_inicio}`} className="p-4">
               <div className="flex items-center justify-between">
@@ -162,8 +171,8 @@ export function SanctionsTab() {
                     {sanction.apellido && ` ${sanction.apellido}`}
                   </h3>
                   <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
-                    <span>Inicio: {startDate.toLocaleDateString()}</span>
-                    <span>Fin: {endDate.toLocaleDateString()}</span>
+                    <span>Inicio: {startDate ? startDate.toLocaleDateString() : "Fecha inválida"}</span>
+                    <span>Fin: {endDate ? endDate.toLocaleDateString() : "Fecha inválida"}</span>
                     <span>Duración: {duration} días</span>
                   </div>
                 </div>

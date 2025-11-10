@@ -237,8 +237,8 @@ def obtener_sanciones():
                 s.ci_participante,
                 p.nombre,
                 p.apellido,
-                DATE_FORMAT(s.fecha_inicio, '%%Y-%%m-%%d') AS fecha_inicio,
-                DATE_FORMAT(s.fecha_fin, '%%Y-%%m-%%d') AS fecha_fin
+                DATE_FORMAT(s.fecha_inicio, '%Y-%m-%dT%H:%i:%sZ') AS fecha_inicio,
+                DATE_FORMAT(s.fecha_fin, '%Y-%m-%dT%H:%i:%sZ') AS fecha_fin
             FROM sancion_participante s
             JOIN participante p ON s.ci_participante = p.ci
         """)
