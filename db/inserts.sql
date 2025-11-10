@@ -81,38 +81,22 @@ INSERT INTO turno (hora_inicio, hora_fin) VALUES
     ('22:00:00', '23:00:00');
 
 -- REservas
-INSERT INTO reserva (nombre_sala, fecha, id_turno, estado) VALUES
-    ('Sala A1', '2025-08-20', 1, 'activa'),
-    ('Sala A2', '2025-08-20', 2, 'activa'),
-    ('Sala B1', '2025-08-21', 3, 'cancelada'),
-    ('Sala B2', '2025-09-21', 4, 'sin_asistencia'),
-    ('Sala C1', '2025-09-22', 5, 'finalizada'),
-    ('Sala C2', '2025-09-22', 6, 'activa'),
-    ('Sala D1', '2025-09-23', 7, 'activa'),
-    ('Sala E1', '2025-09-23', 8, 'activa'),
-    ('Sala A1', '2025-09-24', 9, 'finalizada'),
-    ('Sala A2', '2025-10-24', 10, 'activa'),
-    ('Sala B1', '2025-10-25', 11, 'sin_asistencia'),
-    ('Sala B2', '2025-10-25', 12, 'activa'),
-    ('Sala C1', '2025-10-26', 13, 'finalizada'),
-    ('Sala C2', '2025-10-26', 14, 'activa'),
-    ('Sala D1', '2025-10-27', 15, 'cancelada');
+INSERT INTO reserva (nombre_sala, edificio, fecha, id_turno, estado) VALUES
+('Sala A1', 'Edificio Sacré Coeur', '2025-10-25', 1, 'activa'),      -- turno 08:00–09:00
+('Sala A2', 'Edificio Sacré Coeur', '2025-10-25', 2, 'activa'),      -- turno 09:00–10:00
+('Sala B1', 'Edificio San Ignacio', '2025-10-26', 3, 'finalizada'),  -- turno 10:00–11:00
+('Sala C1', 'Edificio Semprún', '2025-10-26', 4, 'activa'),          -- turno 11:00–12:00
+('Sala D1', 'Edificio Mullin', '2025-10-27', 5, 'cancelada'),        -- turno 12:00–13:00
+('Sala E1', 'Edificio Madre Marta', '2025-10-28', 6, 'activa');      -- turno 13:00–14:00
 
 -- Reserva-Participantes
 INSERT INTO reserva_participante (ci_participante, id_reserva, fecha_solicitud_reserva, asistencia) VALUES
-    (12345678, 1, '2025-10-15', 'true'),
-    (34567890, 2, '2025-10-18', 'true'),
-    (56789012, 3, '2025-10-19', 'false'),
-    (67890123, 4, '2025-10-19', 'false'),
-    (78901234, 5, '2025-10-19', 'true'),
-    (12345678, 6, '2025-10-20', 'true'),
-    (23456789, 7, '2025-10-20', 'true'),
-    (34567890, 8, '2025-10-20', 'true'),
-    (45678901, 9, '2025-10-21', 'true'),
-    (56789012, 10, '2025-10-21', 'true'),
-    (67890123, 11, '2025-10-21', 'false'),
-    (78901234, 12, '2025-10-21', 'true'),
-    (12345670, 13, '2025-10-21', 'true');
+(12345678, 1, '2025-10-20', 'true'),   -- Facundo - Sala A1
+(23456789, 2, '2025-10-21', 'true'),  -- Ana - Sala A2
+(34567890, 3, '2025-10-21', 'false'), -- María - Sala B1
+(45678901, 4, '2025-10-22', 'true'),  -- Carlos - Sala C1
+(56789012, 5, '2025-10-23', 'false'), -- Laura - Sala D1
+(67890123, 6, '2025-10-24', 'true');  -- Javier - Sala E1
 
 -- Sanciones con respecto a las reservas anteriores
 INSERT INTO sancion_participante (ci_participante, fecha_inicio, fecha_fin) VALUES

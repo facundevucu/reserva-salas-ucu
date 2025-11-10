@@ -1,4 +1,3 @@
-
 use reserva_salas_ucu_db;
 -- Primero creo el login ya que es independiente
 
@@ -68,7 +67,7 @@ create table turno (
 create table reserva (
     id_reserva INT AUTO_INCREMENT,
     nombre_sala VARCHAR(50),
-    edificio VARCHAR(100),
+    edificio VARCHAR(100) NOT NULL,
     fecha DATE NOT NULL,
     id_turno INT NOT NULL,
     estado ENUM('activa', 'cancelada', 'sin_asistencia', 'finalizada'),

@@ -7,21 +7,21 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 
 interface Participant {
-  id: string
+  ci: string
   nombre: string
+  apellido: string
   email: string
-  tipo: "estudiante" | "docente"
 }
 
 export function ParticipantsTab() {
   const [participants, setParticipants] = useState<Participant[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingCi, setEditingCi] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     nombre: "",
+    apellido: "",
     email: "",
-    tipo: "estudiante" as const,
   })
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export function ParticipantsTab() {
 
   const fetchParticipants = async () => {
     try {
-      const response = await fetch("/api/personas")
+      const response = await fetch("http://127.0.0.1:5000/api/participantes")
       if (response.ok) {
         const data = await response.json()
         setParticipants(data)
@@ -45,8 +45,8 @@ export function ParticipantsTab() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    const method = editingId ? "PUT" : "POST"
-    const url = editingId ? `/api/personas/${editingId}` : "/api/personas"
+    const method = editingCi ? "PUT" : "POST"
+    const url = editingCi ? `http://127.0.0.1:5000/api/participantes/${editingCi}` : "http://127.0.0.1:5000/api/participantes"
 
     try {
       const response = await fetch(url, {
@@ -57,20 +57,20 @@ export function ParticipantsTab() {
 
       if (response.ok) {
         await fetchParticipants()
-        setFormData({ nombre: "", email: "", tipo: "estudiante" })
+        setFormData({ nombre: "", apellido: "", email: "" })
         setShowForm(false)
-        setEditingId(null)
+        setEditingCi(null)
       }
     } catch (error) {
       console.error("Error saving participant:", error)
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (ci: string) => {
     if (!confirm("¿Está seguro de eliminar este participante?")) return
 
     try {
-      const response = await fetch(`/api/personas/${id}`, {
+      const response = await fetch(`http://127.0.0.1:5000/api/participantes/${ci}`, {
         method: "DELETE",
       })
 
@@ -85,10 +85,10 @@ export function ParticipantsTab() {
   const handleEdit = (participant: Participant) => {
     setFormData({
       nombre: participant.nombre,
+      apellido: participant.apellido,
       email: participant.email,
-      tipo: participant.tipo,
     })
-    setEditingId(participant.id)
+    setEditingCi(participant.ci)
     setShowForm(true)
   }
 
@@ -103,8 +103,8 @@ export function ParticipantsTab() {
         <Button
           onClick={() => {
             setShowForm(!showForm)
-            setEditingId(null)
-            setFormData({ nombre: "", email: "", tipo: "estudiante" })
+            setEditingCi(null)
+            setFormData({ nombre: "", apellido: "", email: "" })
           }}
           className="bg-primary hover:bg-primary/90 text-primary-foreground"
         >
@@ -121,7 +121,19 @@ export function ParticipantsTab() {
                 type="text"
                 value={formData.nombre}
                 onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                placeholder="Nombre completo"
+                placeholder="Nombre"
+                className="w-full px-3 py-2 border border-border rounded-lg bg-white text-foreground"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Apellido</label>
+              <input
+                type="text"
+                value={formData.apellido}
+                onChange={(e) => setFormData({ ...formData, apellido: e.target.value })}
+                placeholder="Apellido"
                 className="w-full px-3 py-2 border border-border rounded-lg bg-white text-foreground"
                 required
               />
@@ -139,20 +151,8 @@ export function ParticipantsTab() {
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Tipo</label>
-              <select
-                value={formData.tipo}
-                onChange={(e) => setFormData({ ...formData, tipo: e.target.value as any })}
-                className="w-full px-3 py-2 border border-border rounded-lg bg-white text-foreground"
-              >
-                <option value="estudiante">Estudiante</option>
-                <option value="docente">Docente</option>
-              </select>
-            </div>
-
             <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
-              {editingId ? "Actualizar" : "Crear"} Participante
+              {editingCi ? "Actualizar" : "Crear"} Participante
             </Button>
           </form>
         </Card>
@@ -160,14 +160,11 @@ export function ParticipantsTab() {
 
       <div className="grid gap-4">
         {participants.map((participant) => (
-          <Card key={participant.id} className="p-4">
+          <Card key={participant.ci} className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <h3 className="font-medium text-foreground">{participant.nombre}</h3>
+                <h3 className="font-medium text-foreground">{participant.nombre} {participant.apellido}</h3>
                 <p className="text-sm text-muted-foreground">{participant.email}</p>
-                <span className="inline-block mt-2 text-xs px-2 py-1 bg-primary/10 text-primary rounded">
-                  {participant.tipo}
-                </span>
               </div>
               <div className="flex gap-2">
                 <Button
@@ -181,7 +178,7 @@ export function ParticipantsTab() {
                 <Button
                   size="sm"
                   variant="destructive"
-                  onClick={() => handleDelete(participant.id)}
+                  onClick={() => handleDelete(participant.ci)}
                   className="text-destructive hover:bg-destructive/10"
                 >
                   Eliminar

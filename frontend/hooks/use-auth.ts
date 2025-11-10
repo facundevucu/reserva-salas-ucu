@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 
 export interface User {
@@ -74,6 +74,14 @@ export function useAuth() {
     localStorage.removeItem("user")
     router.push("/") // o "/login" si tenés una ruta dedicada
   }, [router])
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      localStorage.removeItem("user")
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
+  }, [])
 
   return { ...state, login, logout }
 }

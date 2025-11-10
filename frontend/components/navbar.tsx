@@ -20,8 +20,12 @@ export function Navbar({ user, onLogout }: NavbarProps) {
       <nav className="bg-white border-b border-border shadow-sm sticky top-0 z-40 transition-all duration-300">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded flex items-center justify-center hover:bg-primary/90 transition-colors duration-200">
-              <span className="text-white text-sm font-bold">U</span>
+            <div className="w-12 h-12 rounded flex items-center justify-center overflow-hidden hover:opacity-90 transition-opacity duration-200">
+              <img
+                src="/logo cucu.png"
+                alt="Logo UCU"
+                className="w-12 h-12 object-contain"
+              />
             </div>
             <span className="font-semibold text-foreground hidden sm:inline">
               {user.role === "admin" ? "Panel Administrativo" : "Mis Reservas"}

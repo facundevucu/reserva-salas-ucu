@@ -2,65 +2,83 @@ from backend.db_connection import get_db_connection, close_connection
 
 def ejecutar_consulta(sql):
     conn = get_db_connection()
-    if not conn:
-        print("No se pudo conectar a la base de datos.")
-        return [], []
-    
     cursor = conn.cursor()
     cursor.execute(sql)
     resultados = cursor.fetchall()
-    nombres_columnas = [desc[0] for desc in cursor.description]
-    # Con esto obtengo los nombres de las columnas
+    columnas = [desc[0] for desc in cursor.description]
     cursor.close()
     close_connection(conn)
-    return nombres_columnas, resultados
+    return columnas, resultados
+
 
 def mostrar_resultados(nombre_reporte, columnas, resultados):
-    # Imprime los resultados en consola de forma legible. 
     print(f"\n📊 {nombre_reporte}")
-    print("=" * (len(nombre_reporte) + 4))
     if not resultados:
         print("Sin resultados.")
         return
     print(" | ".join(columnas))
-    print("-" * 80)
     for fila in resultados:
         print(" | ".join(str(x) for x in fila))
 
 # Ahora escribo funciones específicas para cada reporte, los cuales estan en db/consultas.sql
 def salas_mas_reservadas():
     sql = """
-        SELECT nombre_sala,
-               COUNT(*) AS total_reservas
-        FROM reserva
-        GROUP BY nombre_sala
+        SELECT r.nombre_sala, s.edificio, COUNT(*) AS total_reservas
+        FROM reserva r
+        JOIN sala s ON r.nombre_sala = s.nombre_sala
+        GROUP BY r.nombre_sala, s.edificio
         ORDER BY total_reservas DESC;
     """
     cols, rows = ejecutar_consulta(sql)
-    mostrar_resultados("Salas más reservadas", cols, rows)
+
+    # Armo el nombre completo en Python (nombre_sala + edificio)
+    filas_formateadas = []
+    for fila in rows:
+        nombre_sala = f"{fila[0]} ({fila[1]})"
+        total_reservas = fila[2]
+        filas_formateadas.append((nombre_sala, total_reservas))
+
+    columnas = ["nombre_sala", "total_reservas"]
+
+    mostrar_resultados("Salas más reservadas", columnas, filas_formateadas)
+    return columnas, filas_formateadas
 
 def turnos_mas_demandados():
     sql = """
         SELECT t.id_turno, t.hora_inicio, t.hora_fin,
                COUNT(r.id_reserva) AS total_reservas
         FROM turno t
-        LEFT JOIN reserva r ON t.id_turno = r.id_turno
+        JOIN reserva r ON t.id_turno = r.id_turno
         GROUP BY t.id_turno, t.hora_inicio, t.hora_fin
         ORDER BY total_reservas DESC;
     """
     cols, rows = ejecutar_consulta(sql)
+    rows = convertir_tiempos(rows)  # ✅ convierto las horas a texto
     mostrar_resultados("Turnos más demandados", cols, rows)
+    return cols, rows
 
 def promedio_participantes_por_sala():
     sql = """
-        SELECT r.nombre_sala,
-            COUNT(rp.ci_participante) / COUNT(DISTINCT r.id_reserva) AS promedio_participantes
+        SELECT r.nombre_sala, s.edificio,
+               COUNT(rp.ci_participante) / COUNT(DISTINCT r.id_reserva) AS promedio_participantes
         FROM reserva r
+        JOIN sala s ON r.nombre_sala = s.nombre_sala
         JOIN reserva_participante rp ON r.id_reserva = rp.id_reserva
-        GROUP BY r.nombre_sala;
+        WHERE r.nombre_sala != 'cancelada'
+        GROUP BY r.nombre_sala, s.edificio;
     """
     cols, rows = ejecutar_consulta(sql)
-    mostrar_resultados("Promedio de participantes por sala", cols, rows)
+
+    filas_formateadas = []
+    for fila in rows:
+        nombre_sala = f"{fila[0]} ({fila[1]})"
+        promedio_participantes = fila[2]
+        filas_formateadas.append((nombre_sala, promedio_participantes))
+
+    columnas = ["nombre_sala", "promedio_participantes"]
+
+    mostrar_resultados("Promedio de participantes por sala", columnas, filas_formateadas)
+    return columnas, filas_formateadas
 
 def reservas_por_carrera_y_facultad():
     sql = """
@@ -75,6 +93,7 @@ def reservas_por_carrera_y_facultad():
     """
     cols, rows = ejecutar_consulta(sql)
     mostrar_resultados("Reservas por carrera y facultad", cols, rows)
+    return cols, rows
 
 def porcentaje_ocupacion_por_edificio():
     sql = """
@@ -88,6 +107,7 @@ def porcentaje_ocupacion_por_edificio():
     """
     cols, rows = ejecutar_consulta(sql)
     mostrar_resultados("Porcentaje de ocupación por edificio", cols, rows)
+    return cols, rows
 
 def reservas_y_asistencias_por_tipo_y_rol():
     sql = """
@@ -103,6 +123,7 @@ def reservas_y_asistencias_por_tipo_y_rol():
     """
     cols, rows = ejecutar_consulta(sql)
     mostrar_resultados("Reservas y asistencias por tipo y rol", cols, rows)
+    return cols, rows
 
 def sanciones_por_tipo_y_rol():
     sql = """
@@ -117,6 +138,7 @@ def sanciones_por_tipo_y_rol():
     """
     cols, rows = ejecutar_consulta(sql)
     mostrar_resultados("Sanciones por tipo y rol", cols, rows)
+    return cols, rows
 
 def porcentaje_reservas_utilizadas():
     sql = """
@@ -132,6 +154,7 @@ def porcentaje_reservas_utilizadas():
     """
     cols, rows = ejecutar_consulta(sql)
     mostrar_resultados("Porcentaje de reservas utilizadas vs no utilizadas", cols, rows)
+    return cols, rows
 
 if __name__ == "__main__":
     salas_mas_reservadas()
@@ -143,3 +166,20 @@ if __name__ == "__main__":
     sanciones_por_tipo_y_rol()
     porcentaje_reservas_utilizadas()
 # Bloque de prueba, ejecuta todos los reportes
+
+# Convierte objetos timedelta en texto legible (ej: '08:00:00')
+def convertir_tiempos(resultados):
+    nuevos_resultados = []
+    for fila in resultados:
+        nueva_fila = []
+        for valor in fila:
+            # Si el valor es de tipo timedelta, lo paso a texto
+            if str(type(valor)) == "<class 'datetime.timedelta'>":
+                segundos = valor.total_seconds()
+                horas = int(segundos // 3600)
+                minutos = int((segundos % 3600) // 60)
+                nueva_fila.append(f"{horas:02d}:{minutos:02d}:00")
+            else:
+                nueva_fila.append(valor)
+        nuevos_resultados.append(tuple(nueva_fila))
+    return nuevos_resultados

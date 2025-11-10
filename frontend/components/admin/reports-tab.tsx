@@ -3,118 +3,128 @@
 import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 
-interface ReportData {
-  roomsReserved: Array<{ room: string; count: number }>
-  turnsRequested: Array<{ turn: string; count: number }>
-  avgParticipants: number
-  occupancyByBuilding: Array<{ building: string; percentage: number }>
-  activeSanctions: number
-}
-
 export function ReportsTab() {
-  const [reportData, setReportData] = useState<ReportData | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [reportes, setReportes] = useState<Array<{ nombre: string; titulo: string }>>([])
+  const [reporteSeleccionado, setReporteSeleccionado] = useState<string | null>(null)
+  const [columnas, setColumnas] = useState<string[]>([])
+  const [filas, setFilas] = useState<Array<Record<string, any>>>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchReports()
+    const fetchReportes = async () => {
+      try {
+        const response = await fetch("http://127.0.0.1:5000/api/reportes")
+        if (response.ok) {
+          const data = await response.json()
+          setReportes(data.reportes || [])
+          if (data.reportes && data.reportes.length > 0) {
+            setReporteSeleccionado(data.reportes[0].nombre)
+          }
+        } else {
+          setError("Error cargando la lista de reportes")
+        }
+      } catch (err) {
+        setError("Error cargando la lista de reportes")
+      }
+    }
+    fetchReportes()
   }, [])
 
-  const fetchReports = async () => {
-    try {
-      const response = await fetch("/api/reportes")
-      if (response.ok) {
-        const data = await response.json()
-        setReportData(data)
+  useEffect(() => {
+    if (!reporteSeleccionado) return
+
+    const fetchReporteData = async () => {
+      setIsLoading(true)
+      setError(null)
+      try {
+        const response = await fetch(`http://127.0.0.1:5000/reportes/${encodeURIComponent(reporteSeleccionado)}`)
+        if (response.ok) {
+          const data = await response.json()
+          setColumnas(data.columnas || [])
+          if (data.filas && Array.isArray(data.filas) && Array.isArray(data.columnas)) {
+            const filasObj = data.filas.map((fila: any[]) => {
+              const obj: Record<string, any> = {}
+              data.columnas.forEach((col: string, idx: number) => {
+                obj[col] = fila[idx]
+              })
+              return obj
+            })
+            setFilas(filasObj)
+          } else {
+            setFilas([])
+          }
+          setError(null)
+        } else {
+          console.error(`Error fetching report data: ${response.statusText}`)
+          setError("Error cargando los datos del reporte")
+          setColumnas([])
+          setFilas([])
+        }
+      } catch (err) {
+        console.error(err)
+        setError("Error cargando los datos del reporte")
+        setColumnas([])
+        setFilas([])
+      } finally {
+        setIsLoading(false)
       }
-    } catch (error) {
-      console.error("Error fetching reports:", error)
-    } finally {
-      setIsLoading(false)
     }
-  }
-
-  if (isLoading) {
-    return <div className="text-center py-8 text-muted-foreground">Cargando...</div>
-  }
-
-  if (!reportData) {
-    return <div className="text-center py-8 text-muted-foreground">Error cargando reportes</div>
-  }
+    fetchReporteData()
+  }, [reporteSeleccionado])
 
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-foreground">Reportes y Consultas</h2>
 
-      {/* Most Reserved Rooms */}
       <Card className="p-6">
-        <h3 className="font-semibold text-foreground mb-4">Salas Más Reservadas</h3>
-        <div className="space-y-3">
-          {reportData.roomsReserved.map((item, idx) => (
-            <div key={idx} className="flex items-center justify-between">
-              <span className="text-sm text-foreground">{item.room}</span>
-              <div className="flex items-center gap-2">
-                <div className="w-32 bg-secondary rounded-full h-2">
-                  <div
-                    className="bg-primary rounded-full h-2 transition-all"
-                    style={{
-                      width: `${Math.min(
-                        (item.count / Math.max(...reportData.roomsReserved.map((r) => r.count))) * 100,
-                        100,
-                      )}%`,
-                    }}
-                  />
-                </div>
-                <span className="text-sm font-medium text-foreground w-8">{item.count}</span>
-              </div>
-            </div>
+        <h3 className="font-semibold text-foreground mb-4">Seleccionar Reporte</h3>
+        <div className="flex flex-wrap gap-4">
+          {reportes.map((r) => (
+            <button
+              key={r.nombre}
+              className={`px-4 py-2 rounded ${
+                r.nombre === reporteSeleccionado ? "bg-primary text-white" : "bg-secondary text-foreground"
+              }`}
+              onClick={() => setReporteSeleccionado(r.nombre)}
+            >
+              {r.titulo}
+            </button>
           ))}
         </div>
       </Card>
 
-      {/* Most Requested Turns */}
-      <Card className="p-6">
-        <h3 className="font-semibold text-foreground mb-4">Turnos Más Demandados</h3>
-        <div className="grid grid-cols-3 gap-4">
-          {reportData.turnsRequested.map((item, idx) => (
-            <div key={idx} className="text-center">
-              <p className="text-2xl font-bold text-primary">{item.count}</p>
-              <p className="text-xs text-muted-foreground mt-1">{item.turn}</p>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Average Participants */}
-      <Card className="p-6">
-        <h3 className="font-semibold text-foreground mb-4">Promedio de Participantes por Sala</h3>
-        <p className="text-3xl font-bold text-primary">{reportData.avgParticipants.toFixed(1)}</p>
-      </Card>
-
-      {/* Occupancy by Building */}
-      <Card className="p-6">
-        <h3 className="font-semibold text-foreground mb-4">Porcentaje de Ocupación por Edificio</h3>
-        <div className="space-y-4">
-          {reportData.occupancyByBuilding.map((item, idx) => (
-            <div key={idx}>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium text-foreground">Edificio {item.building}</span>
-                <span className="text-sm text-muted-foreground">{item.percentage}%</span>
-              </div>
-              <div className="w-full bg-secondary rounded-full h-2">
-                <div
-                  className="bg-primary rounded-full h-2 transition-all"
-                  style={{ width: `${Math.min(item.percentage, 100)}%` }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Active Sanctions */}
-      <Card className="p-6">
-        <h3 className="font-semibold text-foreground mb-4">Sanciones Activas</h3>
-        <p className="text-3xl font-bold text-destructive">{reportData.activeSanctions}</p>
+      <Card className="p-6 overflow-auto">
+        <h3 className="font-semibold text-foreground mb-4">Datos del Reporte: {reporteSeleccionado}</h3>
+        {error && <div className="text-center py-4 text-destructive">{error}</div>}
+        {isLoading ? (
+          <div className="text-center py-8 text-muted-foreground">Cargando...</div>
+        ) : columnas.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">No hay datos para mostrar</div>
+        ) : (
+          <table className="w-full table-auto border-collapse border border-border">
+            <thead>
+              <tr>
+                {columnas.map((col) => (
+                  <th key={col} className="border border-border px-4 py-2 text-left text-sm font-semibold text-foreground bg-muted">
+                    {col}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filas.map((fila, idx) => (
+                <tr key={idx} className={idx % 2 === 0 ? "bg-muted/50" : ""}>
+                  {columnas.map((col) => (
+                    <td key={col} className="border border-border px-4 py-2 text-sm text-foreground">
+                      {fila[col] != null ? String(fila[col]) : ""}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </Card>
     </div>
   )

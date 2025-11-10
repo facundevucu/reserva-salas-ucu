@@ -7,12 +7,11 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 
 interface Sanction {
-  id: string
-  personaId: string
-  razon: string
-  fechaInicio: string
-  duracion: number
-  activa: boolean
+  ci_participante: number
+  nombre?: string
+  apellido?: string
+  fecha_inicio: string
+  fecha_fin: string
 }
 
 export function SanctionsTab() {
@@ -20,9 +19,9 @@ export function SanctionsTab() {
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({
-    personaId: "",
-    razon: "",
-    duracion: "",
+    ci_participante: "",
+    fecha_inicio: "",
+    fecha_fin: "",
   })
 
   useEffect(() => {
@@ -31,7 +30,7 @@ export function SanctionsTab() {
 
   const fetchSanctions = async () => {
     try {
-      const response = await fetch("/api/sanciones")
+      const response = await fetch("http://127.0.0.1:5000/api/sanciones")
       if (response.ok) {
         const data = await response.json()
         setSanctions(data)
@@ -47,18 +46,19 @@ export function SanctionsTab() {
     e.preventDefault()
 
     try {
-      const response = await fetch("/api/sanciones", {
+      const response = await fetch("http://127.0.0.1:5000/api/sanciones", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...formData,
-          duracion: Number.parseInt(formData.duracion),
+          ci_participante: Number(formData.ci_participante),
+          fecha_inicio: formData.fecha_inicio,
+          fecha_fin: formData.fecha_fin,
         }),
       })
 
       if (response.ok) {
         await fetchSanctions()
-        setFormData({ personaId: "", razon: "", duracion: "" })
+        setFormData({ ci_participante: "", fecha_inicio: "", fecha_fin: "" })
         setShowForm(false)
       }
     } catch (error) {
@@ -66,28 +66,14 @@ export function SanctionsTab() {
     }
   }
 
-  const handleLiftSanction = async (id: string) => {
-    if (!confirm("¿Está seguro de levantar esta sanción?")) return
-
-    try {
-      const response = await fetch(`/api/sanciones/${id}/levantar`, {
-        method: "POST",
-      })
-
-      if (response.ok) {
-        await fetchSanctions()
-      }
-    } catch (error) {
-      console.error("Error lifting sanction:", error)
-    }
-  }
-
-  const handleDeleteSanction = async (id: string) => {
+  const handleDeleteSanction = async (ci_participante: number, fecha_inicio: string) => {
     if (!confirm("¿Está seguro de eliminar esta sanción?")) return
 
     try {
-      const response = await fetch(`/api/sanciones/${id}`, {
+      const response = await fetch(`http://127.0.0.1:5000/api/sanciones`, {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ci_participante, fecha_inicio }),
       })
 
       if (response.ok) {
@@ -109,7 +95,7 @@ export function SanctionsTab() {
         <Button
           onClick={() => {
             setShowForm(!showForm)
-            setFormData({ personaId: "", razon: "", duracion: "" })
+            setFormData({ ci_participante: "", fecha_inicio: "", fecha_fin: "" })
           }}
           className="bg-primary hover:bg-primary/90 text-primary-foreground"
         >
@@ -121,37 +107,34 @@ export function SanctionsTab() {
         <Card className="p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">ID Participante</label>
-              <input
-                type="text"
-                value={formData.personaId}
-                onChange={(e) => setFormData({ ...formData, personaId: e.target.value })}
-                placeholder="ID del participante"
-                className="w-full px-3 py-2 border border-border rounded-lg bg-white text-foreground"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Razón</label>
-              <textarea
-                value={formData.razon}
-                onChange={(e) => setFormData({ ...formData, razon: e.target.value })}
-                placeholder="Motivo de la sanción"
-                rows={3}
-                className="w-full px-3 py-2 border border-border rounded-lg bg-white text-foreground"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Duración (días)</label>
+              <label className="text-sm font-medium text-foreground">CI Participante</label>
               <input
                 type="number"
-                value={formData.duracion}
-                onChange={(e) => setFormData({ ...formData, duracion: e.target.value })}
-                placeholder="Número de días"
-                min="1"
+                value={formData.ci_participante}
+                onChange={(e) => setFormData({ ...formData, ci_participante: e.target.value })}
+                placeholder="CI del participante"
+                className="w-full px-3 py-2 border border-border rounded-lg bg-white text-foreground"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Fecha Inicio</label>
+              <input
+                type="date"
+                value={formData.fecha_inicio}
+                onChange={(e) => setFormData({ ...formData, fecha_inicio: e.target.value })}
+                className="w-full px-3 py-2 border border-border rounded-lg bg-white text-foreground"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Fecha Fin</label>
+              <input
+                type="date"
+                value={formData.fecha_fin}
+                onChange={(e) => setFormData({ ...formData, fecha_fin: e.target.value })}
                 className="w-full px-3 py-2 border border-border rounded-lg bg-white text-foreground"
                 required
               />
@@ -165,47 +148,39 @@ export function SanctionsTab() {
       )}
 
       <div className="grid gap-4">
-        {sanctions.map((sanction) => (
-          <Card key={sanction.id} className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <h3 className="font-medium text-foreground">Participante {sanction.personaId}</h3>
-                <p className="text-sm text-muted-foreground mt-1">{sanction.razon}</p>
-                <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
-                  <span>Inicio: {new Date(sanction.fechaInicio).toLocaleDateString()}</span>
-                  <span>Duración: {sanction.duracion} días</span>
+        {sanctions.map((sanction) => {
+          const startDate = new Date(sanction.fecha_inicio)
+          const endDate = new Date(sanction.fecha_fin)
+          const duration = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24))
+          return (
+            <Card key={`${sanction.ci_participante}-${sanction.fecha_inicio}`} className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h3 className="font-medium text-foreground">
+                    Participante {sanction.ci_participante}
+                    {sanction.nombre && ` - ${sanction.nombre}`}
+                    {sanction.apellido && ` ${sanction.apellido}`}
+                  </h3>
+                  <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
+                    <span>Inicio: {startDate.toLocaleDateString()}</span>
+                    <span>Fin: {endDate.toLocaleDateString()}</span>
+                    <span>Duración: {duration} días</span>
+                  </div>
                 </div>
-                <span
-                  className={`inline-block mt-2 text-xs px-2 py-1 rounded ${
-                    sanction.activa ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-700"
-                  }`}
-                >
-                  {sanction.activa ? "Activa" : "Levantada"}
-                </span>
-              </div>
-              <div className="flex flex-col gap-2">
-                {sanction.activa && (
+                <div className="flex flex-col gap-2">
                   <Button
                     size="sm"
-                    variant="outline"
-                    onClick={() => handleLiftSanction(sanction.id)}
-                    className="text-foreground border-border hover:bg-secondary"
+                    variant="destructive"
+                    onClick={() => handleDeleteSanction(sanction.ci_participante, sanction.fecha_inicio)}
+                    className="text-destructive hover:bg-destructive/10"
                   >
-                    Levantar
+                    Eliminar
                   </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => handleDeleteSanction(sanction.id)}
-                  className="text-destructive hover:bg-destructive/10"
-                >
-                  Eliminar
-                </Button>
+                </div>
               </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          )
+        })}
       </div>
     </div>
   )
