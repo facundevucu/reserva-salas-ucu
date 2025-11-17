@@ -124,8 +124,35 @@ def validar_tipo_sala(nombre_sala, edificio, ci_participante):
 
 # ---------------- RESERVAS ----------------
 
-# No más de 3 reservas activas por semana
-def excede_reservas_semanales(ci_participante):
+# No mas de 3 reservas activas por semana
+# EXCEPCION: docentes en salas "docente" y posgrado en salas "posgrado" no tienen este límite
+def excede_reservas_semanales(ci_participante, nombre_sala=None, edificio=None):
+    # Si docente reserva sala docente o posgrado reserva sala posgrado - sin límite
+    if nombre_sala and edificio:
+        conn = get_connection()
+        cursor = conn.cursor()
+        query_excepcion = """
+            SELECT s.tipo_sala, pa.tipo AS tipo_programa, pp.rol
+            FROM participante_programa_academico pp
+            JOIN programa_academico pa ON pa.nombre_programa = pp.nombre_programa
+            JOIN sala s ON s.nombre_sala = %s AND s.edificio = %s
+            WHERE pp.ci_participante = %s
+            LIMIT 1;
+        """
+        cursor.execute(query_excepcion, (nombre_sala, edificio, ci_participante))
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result:
+            tipo_sala, tipo_programa, rol = result
+            # Docentes en salas docente: sin límite
+            if tipo_sala == "docente" and rol == "docente":
+                return False
+            # Posgrado en salas posgrado: sin límite
+            if tipo_sala == "posgrado" and tipo_programa == "posgrado":
+                return False
+    
+    # En todos los demás casos, aplicar límite de 3 reservas/semana
     conn = get_connection()
     cursor = conn.cursor()
     query = """
@@ -137,12 +164,39 @@ def excede_reservas_semanales(ci_participante):
         AND YEARWEEK(r.fecha) = YEARWEEK(CURDATE());
     """
     cursor.execute(query, (ci_participante,))
-    count = cursor.fetchone()[0] # Me devuelve el primer resultado de la tupla count
+    count = cursor.fetchone()[0]
     conn.close()
     return count >= 3
 
-# No más de 2 horas diarias por sala
-def excede_horas_diarias(ci_participante, fecha):
+# No mas de 2 horas diarias
+# EXCEPCION: docentes en salas "docente" y posgrado en salas "posgrado" no tienen este límite
+def excede_horas_diarias(ci_participante, fecha, nombre_sala=None, edificio=None):
+    # Si docente reserva sala docente o posgrado reserva sala posgrado - sin límite
+    if nombre_sala and edificio:
+        conn = get_connection()
+        cursor = conn.cursor()
+        query_excepcion = """
+            SELECT s.tipo_sala, pa.tipo AS tipo_programa, pp.rol
+            FROM participante_programa_academico pp
+            JOIN programa_academico pa ON pa.nombre_programa = pp.nombre_programa
+            JOIN sala s ON s.nombre_sala = %s AND s.edificio = %s
+            WHERE pp.ci_participante = %s
+            LIMIT 1;
+        """
+        cursor.execute(query_excepcion, (nombre_sala, edificio, ci_participante))
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result:
+            tipo_sala, tipo_programa, rol = result
+            # Docentes en salas docente: sin límite
+            if tipo_sala == "docente" and rol == "docente":
+                return False
+            # Posgrado en salas posgrado: sin límite
+            if tipo_sala == "posgrado" and tipo_programa == "posgrado":
+                return False
+    
+    # En todos los demás casos, aplicar límite de 2 horas/día
     conn = get_connection()
     cursor = conn.cursor()
     query = """
@@ -157,8 +211,7 @@ def excede_horas_diarias(ci_participante, fecha):
     
     cursor.execute(query, (ci_participante, fecha))
     resultado = cursor.fetchone()
-    total_horas = resultado[0] if resultado and resultado[0] is not None else 0 # Si es none, son 0 horas, sirve para el return
-    # aca le agregue una validacion porque si no daba salida la orden, se rompia el codigo, entonces ahora si no da salida, le establezco 0, como valor definido
+    total_horas = resultado[0] if resultado and resultado[0] is not None else 0
     conn.close()
     return total_horas >= 2
 
@@ -171,6 +224,26 @@ def fecha_valida(fecha):
     valido = cursor.fetchone()[0]
     conn.close()
     return bool(valido)
+
+
+# Participante tiene otra reserva activa en el mismo turno y fecha
+def participante_ocupado_en_turno(ci_participante, fecha, id_turno):
+        conn = get_connection()
+        cursor = conn.cursor()
+        query = """
+                SELECT 1
+                FROM reserva r
+                JOIN reserva_participante rp ON rp.id_reserva = r.id_reserva
+                WHERE rp.ci_participante = %s
+                    AND r.fecha = %s
+                    AND r.id_turno = %s
+                    AND r.estado = 'activa'
+                LIMIT 1;
+        """
+        cursor.execute(query, (ci_participante, fecha, id_turno))
+        existe = cursor.fetchone()
+        conn.close()
+        return existe is not None
 
 
 # ---------------- SANCIONES ----------------

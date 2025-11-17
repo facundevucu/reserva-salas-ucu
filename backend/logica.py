@@ -27,10 +27,10 @@ def crear_reserva(ci_participante, nombre_sala, edificio, id_turno, fecha, canti
     if tiene_sancion_activa(ci_participante):
         return "El participante tiene una sanción activa."
 
-    if excede_reservas_semanales(ci_participante):
+    if excede_reservas_semanales(ci_participante, nombre_sala, edificio):
         return "El participante ha excedido el límite de reservas semanales."
 
-    if excede_horas_diarias(ci_participante, fecha):
+    if excede_horas_diarias(ci_participante, fecha, nombre_sala, edificio):
         return "El participante ha excedido el límite de horas diarias."
 
     if sala_ocupada(nombre_sala, edificio, id_turno, fecha):
@@ -1037,6 +1037,48 @@ def crear_reserva_multiple(ci_participante, nombre_sala, edificio, id_turno_inic
         print(f"Error al crear reserva múltiple: {err}")
         return f"Error al crear reserva: {err}"
 
+def agregar_participantes_a_reservas(ids_reserva, participantes):
+    # agrega una lista de participantes a una lista de reservas
+    ids_reserva: list[int]
+    participantes: list[str|int]
+    # participantes es una lista que puede tener string o integer, porque desde la BD viene como int y desde la consola como string
+
+    conn = get_db_connection()
+    if not conn:
+        return "Error de conexión a la base de datos"
+
+    try:
+        cursor = conn.cursor()
+        insert_sql = (
+            """
+            INSERT INTO reserva_participante (ci_participante, id_reserva, fecha_solicitud_reserva, asistencia)
+            VALUES (%s, %s, CURDATE(), NULL)
+            """
+        )
+
+        for id_reserva in ids_reserva:
+            for ci in participantes:
+                try:
+                    cursor.execute(insert_sql, (ci, id_reserva))
+                except mysql.connector.Error as e:
+                    # Ignorar duplicado por PK (ci_participante, id_reserva)
+                    # error 1062 es duplicate entry, osea cedula ya ingresada para esa reserva
+                    if getattr(e, 'errno', None) == 1062:
+                        continue
+                    else:
+                        conn.rollback()
+                        return f"Error al agregar participantes: {e}"
+
+        conn.commit()
+        cursor.close()
+        close_connection(conn)
+        return "Participantes agregados correctamente."
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            close_connection(conn)
+        return f"Error al agregar participantes: {e}"
+
 def cambiar_contraseña(correo, contraseña_actual, contraseña_nueva):
 
     conn = get_db_connection()
@@ -1101,6 +1143,288 @@ def verificar_debe_cambiar_contraseña(correo):
         if conn:
             conn.close()
         return False
+
+
+# ================== GESTIÓN DE ASISTENCIA ==================
+
+def listar_participantes_reserva(id_reserva):
+    """
+    Lista todos los participantes de una reserva con su información de asistencia.
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        query = """
+            SELECT 
+                rp.ci_participante,
+                p.nombre,
+                p.apellido,
+                p.email,
+                rp.asistencia,
+                COALESCE(ppa.rol, 'alumno') as rol
+            FROM reserva_participante rp
+            JOIN participante p ON rp.ci_participante = p.ci
+            LEFT JOIN participante_programa_academico ppa ON p.ci = ppa.ci_participante
+            WHERE rp.id_reserva = %s
+            ORDER BY p.apellido, p.nombre
+        """
+        cursor.execute(query, (id_reserva,))
+        participantes = cursor.fetchall()
+        cursor.close()
+        return participantes
+        
+    except Error as e:
+        print(f"Error al listar participantes de reserva: {e}")
+        return []
+    finally:
+        if conn and conn.is_connected():
+            close_connection(conn)
+
+
+def registrar_asistencia_reserva(id_reserva, presentes=None, justificados=None):
+
+
+    #presentes: lista de CIs que asistieron
+    #justificados: lista de CIs con ausencia justificada
+    #Los demás se marcan como 'ausente'
+    
+    # Actualiza el estado de la reserva:
+    #'finalizada' si hay al menos 1 presente o justificado
+    #'sin_asistencia' si todos ausentes
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        presentes = presentes or []
+        justificados = justificados or []
+        
+        # Obtener todos los participantes de la reserva
+        cursor.execute(
+            "SELECT ci_participante FROM reserva_participante WHERE id_reserva = %s",
+            (id_reserva,)
+        )
+        todos_cis = [str(row[0]) for row in cursor.fetchall()]
+        
+        if not todos_cis:
+            return "No se encontraron participantes para esta reserva."
+        
+        # Actualizar asistencia de cada participante
+        for ci in todos_cis:
+            if str(ci) in presentes:
+                asistencia = 'presente'
+            elif str(ci) in justificados:
+                asistencia = 'justificado'
+            else:
+                asistencia = 'ausente'
+            
+            cursor.execute(
+                "UPDATE reserva_participante SET asistencia = %s WHERE id_reserva = %s AND ci_participante = %s",
+                (asistencia, id_reserva, ci)
+            )
+        
+        # Determinar nuevo estado de la reserva
+        hay_asistentes = len(presentes) > 0 or len(justificados) > 0
+        nuevo_estado = 'finalizada' if hay_asistentes else 'sin_asistencia'
+        
+        cursor.execute(
+            "UPDATE reserva SET estado = %s WHERE id_reserva = %s",
+            (nuevo_estado, id_reserva)
+        )
+        
+        conn.commit()
+        
+        return {
+            'mensaje': 'Asistencia registrada exitosamente.',
+            'estado': nuevo_estado,
+            'presentes': len(presentes),
+            'justificados': len(justificados),
+            'ausentes': len(todos_cis) - len(presentes) - len(justificados)
+        }
+        
+    except Error as e:
+        if conn:
+            conn.rollback()
+        print(f"Error al registrar asistencia: {e}")
+        return f"Error al registrar asistencia: {e}"
+    finally:
+        if conn and conn.is_connected():
+            close_connection(conn)
+
+
+def procesar_reservas_vencidas_y_sancionar(fecha_ref=None):
+    """
+    Procesa reservas vencidas (fecha pasada, estado 'activa') sin asistencia registrada.
+    Sanciona a participantes ausentes con 2 meses sin poder reservar.
+    
+    fecha_ref: fecha de referencia para considerar vencidas (default: hoy)
+    """
+    from datetime import date, timedelta
+    
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        fecha_limite = fecha_ref or date.today()
+        
+        # Buscar reservas vencidas sin procesar
+        query_reservas = """
+            SELECT id_reserva, fecha, nombre_sala, edificio, id_turno
+            FROM reserva
+            WHERE fecha < %s 
+              AND estado = 'activa'
+        """
+        cursor.execute(query_reservas, (fecha_limite,))
+        reservas_vencidas = cursor.fetchall()
+        
+        total_reservas = len(reservas_vencidas)
+        total_sanciones = 0
+        
+        for reserva in reservas_vencidas:
+            id_reserva = reserva['id_reserva']
+            
+            # Obtener participantes sin asistencia registrada o ausentes
+            query_participantes = """
+                SELECT ci_participante
+                FROM reserva_participante
+                WHERE id_reserva = %s
+                  AND (asistencia IS NULL OR asistencia = 'ausente')
+            """
+            cursor.execute(query_participantes, (id_reserva,))
+            participantes_ausentes = cursor.fetchall()
+            
+            # Si todos los participantes están ausentes o sin registrar
+            if participantes_ausentes:
+                # Verificar si todos están ausentes
+                cursor.execute(
+                    "SELECT COUNT(*) as total FROM reserva_participante WHERE id_reserva = %s",
+                    (id_reserva,)
+                )
+                total_participantes = cursor.fetchone()['total']
+                
+                # Solo sancionar si TODOS están ausentes/sin registrar
+                if len(participantes_ausentes) == total_participantes:
+                    fecha_inicio_sancion = date.today()
+                    fecha_fin_sancion = fecha_inicio_sancion + timedelta(days=60)  # 2 meses
+                    
+                    for participante in participantes_ausentes:
+                        ci = participante['ci_participante']
+                        
+                        # Verificar si ya tiene una sanción activa por esta reserva
+                        cursor.execute(
+                            """
+                            SELECT id_sancion 
+                            FROM sancion_participante 
+                            WHERE ci_participante = %s 
+                              AND motivo LIKE %s
+                              AND estado = 'activa'
+                            """,
+                            (ci, f'%reserva {id_reserva}%')
+                        )
+                        
+                        if not cursor.fetchone():
+                            # Crear sanción
+                            query_sancion = """
+                                INSERT INTO sancion_participante 
+                                (ci_participante, motivo, estado, fecha_inicio, fecha_fin)
+                                VALUES (%s, %s, 'activa', %s, %s)
+                            """
+                            motivo = f"No asistencia a reserva {id_reserva} del {reserva['fecha']}"
+                            cursor.execute(query_sancion, (ci, motivo, fecha_inicio_sancion, fecha_fin_sancion))
+                            total_sanciones += 1
+                    
+                    # Actualizar estado de la reserva
+                    cursor.execute(
+                        "UPDATE reserva SET estado = 'sin_asistencia' WHERE id_reserva = %s",
+                        (id_reserva,)
+                    )
+                    
+                    # Marcar todos como ausentes si están NULL
+                    cursor.execute(
+                        "UPDATE reserva_participante SET asistencia = 'ausente' WHERE id_reserva = %s AND asistencia IS NULL",
+                        (id_reserva,)
+                    )
+        
+        conn.commit()
+        
+        return {
+            'mensaje': 'Procesamiento completado exitosamente.',
+            'reservas_procesadas': total_reservas,
+            'sanciones_aplicadas': total_sanciones
+        }
+        
+    except Error as e:
+        if conn:
+            conn.rollback()
+        print(f"Error al procesar reservas vencidas: {e}")
+        return f"Error al procesar reservas vencidas: {e}"
+    finally:
+        if conn and conn.is_connected():
+            close_connection(conn)
+
+
+def listar_reservas_hoy(ci_participante=None):
+    """
+    Lista reservas activas para el día de hoy.
+    Si se proporciona ci_participante, filtra por ese participante.
+    """
+    from datetime import date
+    
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        if ci_participante:
+            query = """
+                SELECT DISTINCT
+                    r.id_reserva,
+                    r.nombre_sala,
+                    r.edificio,
+                    r.fecha,
+                    r.estado,
+                    t.hora_inicio,
+                    t.hora_fin
+                FROM reserva r
+                JOIN reserva_participante rp ON r.id_reserva = rp.id_reserva
+                JOIN turno t ON r.id_turno = t.id_turno
+                WHERE r.fecha = %s
+                  AND r.estado = 'activa'
+                  AND rp.ci_participante = %s
+                ORDER BY t.hora_inicio
+            """
+            cursor.execute(query, (date.today(), ci_participante))
+        else:
+            query = """
+                SELECT 
+                    r.id_reserva,
+                    r.nombre_sala,
+                    r.edificio,
+                    r.fecha,
+                    r.estado,
+                    t.hora_inicio,
+                    t.hora_fin
+                FROM reserva r
+                JOIN turno t ON r.id_turno = t.id_turno
+                WHERE r.fecha = %s
+                  AND r.estado = 'activa'
+                ORDER BY t.hora_inicio
+            """
+            cursor.execute(query, (date.today(),))
+        
+        reservas = cursor.fetchall()
+        cursor.close()
+        return reservas
+        
+    except Error as e:
+        print(f"Error al listar reservas de hoy: {e}")
+        return []
+    finally:
+        if conn and conn.is_connected():
+            close_connection(conn)
 
 
 

@@ -84,7 +84,7 @@ create table reserva_participante (
     ci_participante INT,
     id_reserva INT NOT NULL,
     fecha_solicitud_reserva DATE,
-    asistencia ENUM('true', 'false'),
+    asistencia ENUM('presente', 'ausente', 'justificado') DEFAULT NULL,
     PRIMARY KEY (ci_participante, id_reserva),
     FOREIGN KEY (id_reserva) REFERENCES reserva(id_reserva)
 );
