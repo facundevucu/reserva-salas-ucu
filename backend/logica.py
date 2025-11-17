@@ -1,7 +1,6 @@
 from db_connection import get_db_connection, close_connection
 import mysql.connector
 from mysql.connector import Error
-from logs import registrar_log
 from validaciones import (
     tiene_sancion_activa,
     excede_reservas_semanales,
@@ -21,34 +20,26 @@ def generar_contraseña_aleatoria(longitud=8):
 #ABM de RESERVAS (creacion, eliminacion, modificacion)--------------------------------
 
 def crear_reserva(ci_participante, nombre_sala, edificio, id_turno, fecha, cantidad_participantes, estado="activa"):
-    accion = "Crear reserva"
     
     if not fecha_valida(fecha):
-        registrar_log(ci_participante, accion, "error", "Fecha inválida")
         return "La fecha seleccionada no es válida."
     
     if tiene_sancion_activa(ci_participante):
-        registrar_log(ci_participante, accion, "error", "Sanción activa")
         return "El participante tiene una sanción activa."
 
     if excede_reservas_semanales(ci_participante):
-        registrar_log(ci_participante, accion, "error", "Excede reservas semanales")
         return "El participante ha excedido el límite de reservas semanales."
 
     if excede_horas_diarias(ci_participante, fecha):
-        registrar_log(ci_participante, accion, "error", "Excede horas diarias")
         return "El participante ha excedido el límite de horas diarias."
 
     if sala_ocupada(nombre_sala, edificio, id_turno, fecha):
-        registrar_log(ci_participante, accion, "error", "Sala ocupada")
         return "La sala está ocupada en el turno y fecha seleccionados."
 
     if excede_capacidad(nombre_sala, edificio, cantidad_participantes):
-        registrar_log(ci_participante, accion, "error", "Excede capacidad")
         return "La cantidad de personas excede la capacidad de la sala."
 
     if not validar_tipo_sala(nombre_sala, edificio, ci_participante):
-        registrar_log(ci_participante, accion, "error", "Tipo de sala no autorizado")
         return "El participante no está autorizado para reservar este tipo de sala."
 
     # Si pasa todas las validaciones, proceder a crear la reserva
@@ -73,14 +64,12 @@ def crear_reserva(ci_participante, nombre_sala, edificio, id_turno, fecha, canti
         """
         cursor.execute(query_participante, (ci_participante, id_reserva))        
         conn.commit() # confirma y guarda la reserva y el participante
-        registrar_log(ci_participante, accion, "éxito", f"Reserva creada (ID {id_reserva})")
         return {"id_reserva": id_reserva, "mensaje": "Reserva creada exitosamente."}
     
     except Exception as e:
-        # Si hay un error, hago rollback y registro el log
+        # Si hay un error, hago rollback
         if conn:
             conn.rollback()
-        registrar_log(ci_participante, accion, "error", f"Error SQL: {e}")
         print("Error MySQL:", e)
         return "Ocurrió un error al crear la reserva. Intente nuevamente más tarde."
     
@@ -100,14 +89,11 @@ def eliminar_reserva(id_reserva):
 
         if cursor.rowcount > 0:
         # Esto indica la cantidad de filas afectadas por la instruccion
-            registrar_log(None, "eliminar_reserva", "exito", f"Reserva {id_reserva} cancelada correctamente")
             return f"Reserva {id_reserva} cancelada correctamente."
         else: 
-            registrar_log(None, "eliminar_reserva", "error", f"No se encontro la reserva {id_reserva}")
             return f"No se encontro la reserva con ID {id_reserva}."
         
     except Error as e:
-        registrar_log(None, "eliminar reserva", "error", f"Error al cancelar reserva {id_reserva}")
         return f"Error al cancelar la reserva: {e}"
         # Con el {e} muestro el error que ocurre (lo hace el conector)
 
@@ -144,7 +130,6 @@ def modificar_reserva(id_reserva, nombre_sala = None, fecha = None, id_turno = N
             campos.append("estado = %s")
             valores.append(estado)
         if not campos:
-            registrar_log("modificar_reserva", "error", f"No se proporcionaron campos a modificar para reserva {id_reserva}")
             return "No se proporcionaron datos para modificar"
         
         #En caso que todo salio bien
@@ -157,11 +142,9 @@ def modificar_reserva(id_reserva, nombre_sala = None, fecha = None, id_turno = N
         cursor.execute(sql, valores)
         connection.commit()
 
-        registrar_log(None, "modificar_reserva", "exito", f"Reserva {id_reserva} modificada con exito.")
         return f"Reserva {id_reserva} modificada correctamente."
     
     except Error as e:
-        registrar_log(None, "modificar_reserva", "error", f"Error al modificar la reserva {id_reserva}.")
         return f"Error al modificar la reserva {e}."
     
     finally:
@@ -200,7 +183,6 @@ def crear_persona(ci_participante, nombre, apellido, email):
         cursor.close()
         conn.close()
         
-        registrar_log(ci_participante, "crear_persona", f"CI: {ci_participante}, Nombre: {nombre} {apellido}")
         return {
             'mensaje': f"Participante creado correctamente. Contraseña generada: {contraseña_generada}",
             'contraseña': contraseña_generada
@@ -210,11 +192,9 @@ def crear_persona(ci_participante, nombre, apellido, email):
         if conn:
             conn.rollback()
             conn.close()
-        registrar_log(ci_participante, "crear_persona", f"Error: {err}", estado="fallido")
         return f" Error al crear participante: {err}"
 
 def eliminar_persona(ci_participante):
-    accion = "eliminar_persona"
     connection = None
 
     try:
@@ -224,7 +204,6 @@ def eliminar_persona(ci_participante):
         # Verificar si tiene reservas asociadas
         cursor.execute("SELECT 1 FROM reserva_participante WHERE ci_participante = %s LIMIT 1", (ci_participante,))
         if cursor.fetchone():
-            registrar_log(ci_participante, accion, "error", "Participante tiene reservas asociadas")
             return "No se puede eliminar porque tiene reservas asociadas."
 
         # Cambiar estado a 'inactivo'
@@ -233,15 +212,12 @@ def eliminar_persona(ci_participante):
         connection.commit()
 
         if cursor.rowcount > 0:
-            registrar_log(ci_participante, accion, "exito", f"Persona {ci_participante} desactivada correctamente")
             return f"Persona {ci_participante} desactivada correctamente."
         else:
-            registrar_log(ci_participante, accion, "error", f"No se encontró persona {ci_participante}")
             return f"No se encontró persona con CI {ci_participante}."
     except Error as e:
         if connection:
             connection.rollback()
-        registrar_log(ci_participante, accion, "error", f"Error al desactivar persona: {e}")
         return f"Error al desactivar persona: {e}"
     finally:
         if connection and connection.is_connected():
@@ -252,7 +228,6 @@ def eliminar_persona(ci_participante):
 # aca se repite la estructura de modificar_reserva pero adaptada a persona
 # para modificar la persona siempre tengo que indicar la ci_participante, y el/los campos a modificar con su nuevo valor
 def modificar_persona(ci_participante, nombre=None, apellido=None, email=None):
-    accion = "modificar_persona"
     connection = None
     try:
         connection = get_db_connection()
@@ -272,7 +247,6 @@ def modificar_persona(ci_participante, nombre=None, apellido=None, email=None):
             valores.append(email)
 
         if not campos:
-            registrar_log(ci_participante, accion, "error", f"No se proporcionaron campos a modificar para {ci_participante}")
             return "No se proporcionaron datos para modificar."
 
         valores.append(ci_participante)
@@ -281,12 +255,10 @@ def modificar_persona(ci_participante, nombre=None, apellido=None, email=None):
         cursor.execute(sql, valores)
         connection.commit()
 
-        registrar_log(ci_participante, accion, "exito", f"Persona {ci_participante} modificada correctamente")
         return f"Persona {ci_participante} modificada correctamente."
     except Error as e:
         if connection:
             connection.rollback()
-        registrar_log(ci_participante, accion, "error", f"Error al modificar persona: {e}")
         return f"Error al modificar persona: {e}"
     finally:
         if connection and connection.is_connected():
@@ -298,13 +270,10 @@ def modificar_persona(ci_participante, nombre=None, apellido=None, email=None):
 
 #ABM de SALAS (creacion, eliminacion, modificacion)--------------------------------
 def crear_sala(nombre_sala, edificio, capacidad, tipo_sala):
-    accion = "crear_sala" # sirve para el log
-    connection = None # verifica que no se quede abierta la conexion en caso de error
+    connection = None
 
     if not isinstance(capacidad, int) or capacidad <= 0:
-        registrar_log(None, accion, "error", f"Capacidad inválida para sala '{nombre_sala}'")
         return "La capacidad debe ser un número entero positivo."
-    # verifico que la capacidad sea correcta, si no lo es retorno el error desde ya
 
     # verificar si la sala ya existe antes de insertarla
     conn = get_db_connection()
@@ -312,7 +281,6 @@ def crear_sala(nombre_sala, edificio, capacidad, tipo_sala):
     # hago una consulta para ver si ya existe la sala con ese nombre y edificio
     cursor.execute("SELECT 1 FROM sala WHERE nombre_sala = %s AND edificio = %s", (nombre_sala, edificio))
     if cursor.fetchone():
-        registrar_log(None, "crear_sala", "error", f"La sala '{nombre_sala}' ya existe en el edificio '{edificio}'.")
         close_connection(conn)
         return f"La sala '{nombre_sala}' ya existe en el edificio '{edificio}'."
     close_connection(conn)
@@ -327,16 +295,12 @@ def crear_sala(nombre_sala, edificio, capacidad, tipo_sala):
             VALUES (%s, %s, %s, %s)
         """
         cursor.execute(sql, (nombre_sala, edificio, capacidad, tipo_sala))
-        connection.commit()  # guarda los cambios
+        connection.commit()
 
-        # es none porque la sala no tiene identificasdor unico como la cedula o el id_reserva
-        # esto porque el log necesita un id, la accion, el estado y el detalle
-        registrar_log(None, accion, "exito", f"Sala '{nombre_sala}' en edificio '{edificio}' creada correctamente.")
         return f"Sala '{nombre_sala}' creada correctamente en el edificio '{edificio}'."
     except Error as e:
         if connection:
-            connection.rollback()  # deshace si algo falla
-        registrar_log(None, accion, "error", f"Error al crear sala: {e}")
+            connection.rollback()
         return f"Error al crear sala: {e}"
     finally:
         if connection and connection.is_connected():
@@ -346,33 +310,25 @@ def crear_sala(nombre_sala, edificio, capacidad, tipo_sala):
 
 
 def eliminar_sala(nombre_sala, edificio):
-    accion = "eliminar_sala" # sirve para el log
-    connection = None # verifica que no se quede abierta la conexion en caso de error
+    connection = None
     try:
         connection = get_db_connection()
         cursor = connection.cursor()
 
-        # sql = query
         sql = "DELETE FROM sala WHERE nombre_sala = %s AND edificio = %s"
         cursor.execute(sql, (nombre_sala, edificio))
-        connection.commit() # confirma y guarda los cambios
+        connection.commit()
 
-        if cursor.rowcount > 0: # esto indica la cantidad de filas afectadas por la instruccion
-            # otra vez none porque la sala no tiene id unico, rellena el campo de id en el log
-            registrar_log(None, accion, "exito", f"Sala '{nombre_sala}' del edificio '{edificio}' eliminada correctamente.")
+        if cursor.rowcount > 0:
             return f"Sala '{nombre_sala}' del edificio '{edificio}' eliminada correctamente."
         else:
-            # none para el id tambien
-            registrar_log(None, accion, "error", f"No se encontró la sala '{nombre_sala}' en el edificio '{edificio}'.")
             return f"No se encontró la sala '{nombre_sala}' en el edificio '{edificio}'."
     except Error as e:
         if "1451" in str(e):
             return "No se puede eliminar la sala porque tiene reservas asociadas."
         
         if connection:
-            connection.rollback() # vuelve al estado anterior si falla(ctrl + z)
-        #otra vez none para el id
-        registrar_log(None, accion, "error", f"Error al eliminar sala: {e}")
+            connection.rollback()
         return f"Error al eliminar sala: {e}"
     finally:
         if connection and connection.is_connected():
@@ -388,7 +344,6 @@ def modificar_sala(nombre_sala, edificio, capacidad=None, tipo_sala=None):
 
     if capacidad and (not isinstance(capacidad, int) or capacidad <= 0):
         # si la capacidad existe (o sea, se quiere cambiar) y no es un entero positivo
-        registrar_log(None, "modificar_sala", "error", f"Capacidad inválida: {capacidad}")
         return "La capacidad debe ser un número entero positivo."
     # de entrada verifico que la capacidad sea correcta, si no lo es retorno el error desde ya
     # no utilizo los recursos del try si ya se que va a fallar
@@ -412,7 +367,6 @@ def modificar_sala(nombre_sala, edificio, capacidad=None, tipo_sala=None):
         # las unica solucion que se nos ocurre es eliminar y crear una nueva sala o renonmbrar la sala con una funcion aparte
 
         if not campos: # el usuario no paso ningun campo a modificar, es bobo
-            registrar_log(None, accion, "error", f"No se proporcionaron campos a modificar para sala '{nombre_sala}'")
             return "No se proporcionaron datos para modificar."
 
         valores.append(nombre_sala) # para el WHERE
@@ -426,16 +380,13 @@ def modificar_sala(nombre_sala, edificio, capacidad=None, tipo_sala=None):
         connection.commit()
 
         if cursor.rowcount > 0: # esto indica la cantidad de filas afectadas por la instruccion
-            registrar_log(None, accion, "exito", f"Sala '{nombre_sala}' modificada correctamente.")
             return f"Sala '{nombre_sala}' modificada correctamente."
         else:
-            registrar_log(None, accion, "error", f"No se encontró la sala '{nombre_sala}' en el edificio '{edificio}'.")
             return f"No se encontró la sala '{nombre_sala}' en el edificio '{edificio}'."
     
     except Error as e:
         if connection:
             connection.rollback() # vuelve al estado anterior si falla(ctrl + z)
-        registrar_log(None, accion, "error", f"Error al modificar sala: {e}")
         return f"Error al modificar sala: {e}"
     
     finally:
@@ -458,17 +409,14 @@ def crear_sancion(ci_participante, motivo, fecha_inicio, fecha_fin=None, estado=
     # Validaciones de fechas con las funciones del módulo validaciones
     if not fecha_valida(fecha_inicio) or (fecha_fin and not fecha_valida(fecha_fin)):
         #por las dudas si no tiene fecha_fin no la valido
-        registrar_log(ci_participante, accion, "error", "Fecha(s) inválida(s)")
         return "Alguna de las fechas indicadas no es válida."
 
     if fecha_fin and fecha_fin < fecha_inicio:
         # mas validaciones para posible errores de input de ususario
-        registrar_log(ci_participante, accion, "error", "Rango de fechas inválido")
         return "La fecha de fin no puede ser anterior a la fecha de inicio."
 
     if tiene_sancion_activa(ci_participante):
         #si ya tiene sancion no dejo crear otra
-        registrar_log(ci_participante, accion, "error", "Sanción ya activa")
         return "El participante ya tiene una sanción activa."
 
     try:
@@ -484,13 +432,11 @@ def crear_sancion(ci_participante, motivo, fecha_inicio, fecha_fin=None, estado=
         conn.commit()
         id_sancion = cursor.lastrowid
 
-        registrar_log(ci_participante, accion, "éxito", f"Sanción creada (ID {id_sancion})")
         return {"id_sancion": id_sancion, "mensaje": "Sanción creada correctamente."}
 
     except Exception as e:
         if conn:
             conn.rollback() # revierte los cambios si hay error
-        registrar_log(ci_participante, accion, "error", f"Error SQL: {e}")
         return f"Ocurrió un error al crear la sanción: {e}"
 
     finally:
@@ -514,16 +460,13 @@ def levantar_sancion(id_sancion):
         connection.commit()
 
         if cursor.rowcount > 0:
-            registrar_log(None, accion, "éxito", f"Sanción {id_sancion} levantada")
             return f"Sanción {id_sancion} levantada correctamente."
         else:
-            registrar_log(None, accion, "error", f"No se pudo levantar sanción {id_sancion}")
             return "No se encontró una sanción activa con ese ID."
 
     except Error as e:
         if connection:
             connection.rollback()
-        registrar_log(None, accion, "error", f"Error al levantar sanción {id_sancion}: {e}")
         return f"Error al levantar la sanción: {e}"
 
     finally:
@@ -544,16 +487,13 @@ def eliminar_sancion(id_sancion):
         connection.commit()
 
         if cursor.rowcount > 0:
-            registrar_log(None, accion, "éxito", f"Sanción {id_sancion} anulada")
             return f"Sanción {id_sancion} anulada correctamente."
         else:
-            registrar_log(None, accion, "error", f"No existe sanción {id_sancion}")
             return f"No se encontró sanción con ID {id_sancion}."
 
     except Error as e:
         if connection:
             connection.rollback()
-        registrar_log(None, accion, "error", f"Error al anular sanción {id_sancion}: {e}")
         return f"Error al anular la sanción: {e}"
 
     finally:
@@ -568,15 +508,12 @@ def modificar_sancion(id_sancion, motivo=None, fecha_inicio=None, fecha_fin=None
 
     # validaciones simples de fechas si vienen informadas
     if fecha_inicio and not fecha_valida(fecha_inicio):
-        registrar_log(None, accion, "error", f"fecha_inicio inválida para sanción {id_sancion}")
         return "La fecha de inicio no es válida."
     
     if fecha_fin and not fecha_valida(fecha_fin):
-        registrar_log(None, accion, "error", f"fecha_fin inválida para sanción {id_sancion}")
         return "La fecha de fin no es válida."
     
     if fecha_inicio and fecha_fin and fecha_fin < fecha_inicio:
-        registrar_log(None, accion, "error", f"Rango de fechas inválido en sanción {id_sancion}")
         return "La fecha de fin no puede ser anterior a la fecha de inicio."
 
     try:
@@ -601,7 +538,6 @@ def modificar_sancion(id_sancion, motivo=None, fecha_inicio=None, fecha_fin=None
             valores.append(estado)
 
         if not campos:
-            registrar_log(None, accion, "error", f"Sin campos a modificar en sanción {id_sancion}")
             return "No se proporcionaron datos para modificar."
 
         valores.append(id_sancion)
@@ -610,13 +546,11 @@ def modificar_sancion(id_sancion, motivo=None, fecha_inicio=None, fecha_fin=None
         connection.commit()
         # repito la estructura de los otros ABM de modificacion
 
-        registrar_log(None, accion, "éxito", f"Sanción {id_sancion} modificada")
         return f"Sanción {id_sancion} modificada correctamente."
 
     except Error as e:
         if connection:
             connection.rollback()
-        registrar_log(None, accion, "error", f"Error al modificar sanción {id_sancion}: {e}")
         return f"Error al modificar la sanción: {e}"
 
     finally:
@@ -1138,7 +1072,6 @@ def cambiar_contraseña(correo, contraseña_actual, contraseña_nueva):
         cursor.close()
         conn.close()
         
-        registrar_log("login", "cambiar_contraseña", f"Correo: {correo}")
         return True
         
     except mysql.connector.Error as err:

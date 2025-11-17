@@ -31,14 +31,6 @@ def existe_participante(ci_participante):
     conn.close()
     return existe is not None
 
-# Verificar si el participante está activo
-def participante_activo(ci_participante):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT estado FROM partic sipante WHERE ci = %s;", (ci_participante,))
-    result = cursor.fetchone()
-    conn.close()
-    return result and result[0] == 'activo'
 
 # Validar datos del participante
 def participante_valido(ci, nombre, apellido, email):
@@ -51,21 +43,8 @@ def participante_valido(ci, nombre, apellido, email):
         return False
     return True
 
-# Validar CI
-def ci_valido(ci):
-    return str(ci).isdigit() and 6 <= len(str(ci)) <= 9
 
 # ---------------- SALAS ----------------
-
-# Verificar si la sala existe
-def existe_sala(nombre_sala, edificio):
-    conn = get_connection()
-    cursor = conn.cursor()
-    query = "SELECT 1 FROM sala WHERE nombre_sala = %s AND edificio = %s;"
-    cursor.execute(query, (nombre_sala, edificio))
-    existe = cursor.fetchone()
-    conn.close()
-    return existe is not None
 
 # Verificar si la sala está disponible
 def sala_ocupada(nombre_sala, edificio, id_turno, fecha):
@@ -183,34 +162,6 @@ def excede_horas_diarias(ci_participante, fecha):
     conn.close()
     return total_horas >= 2
 
-# Verificar si el turno es válido
-def turno_valido(id_turno):
-    conn = get_connection()
-    cursor = conn.cursor()
-    query = """
-        sELECT hora_inicio, hora_fin
-        FROM turno
-        WHERE id_turno = %s;"""
-    cursor.execute(query, (id_turno,))
-    valido = cursor.fetchone()
-    conn.close()
-
-    if not valido:
-        return False
-    hora_inicio, hora_fin = valido # valido es una tupla con hora_inicio y hora_fin
-    #por ultimo verifico que la hora de inicio sea menor a la de fin
-    return hora_inicio < hora_fin
-
-# Verificar si la reserva existe
-def reserva_existente(id_reserva):
-    conn = get_connection()
-    cursor = conn.cursor()
-    query = "SELECT 1 FROM reserva WHERE id_reserva = %s;"
-    cursor.execute(query, (id_reserva,))
-    existe = cursor.fetchone()
-    conn.close()
-    return existe is not None
-
 # Validar si la fecha a reservar es futura
 def fecha_valida(fecha):
     conn = get_connection()
@@ -248,187 +199,3 @@ def obtener_sanciones():
     finally:
         cursor.close()
         close_connection(conn)
-
-# Validar sanción (fechas y solapamiento)
-def sancion_valida(ci_participante=None, fecha_inicio=None, fecha_fin=None, verificar_solapamiento=True):
-
-    if not fecha_inicio or not fecha_fin:
-        return False
-    if fecha_fin < fecha_inicio:
-        return False
-
-    if verificar_solapamiento and ci_participante:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        query = """
-            SELECT 1
-            FROM sancion_participante
-            WHERE ci_participante = %s
-            AND (
-                (fecha_inicio <= %s AND fecha_fin >= %s)  -- Se solapa por dentro
-                OR (fecha_inicio <= %s AND fecha_fin >= %s)  -- Se solapa al final
-                OR (%s <= fecha_inicio AND %s >= fecha_fin)  -- Contiene completamente
-            )
-        """
-        cursor.execute(query, (
-            ci_participante,
-            fecha_fin, fecha_inicio,
-            fecha_inicio, fecha_fin,
-            fecha_inicio, fecha_fin
-        ))
-        result = cursor.fetchone()
-        cursor.close()
-        close_connection(conn)
-        
-        if result:
-            return False
-
-    return True
-
-
-# ---------------- GENERALES ----------------
-
-# Validar estado para reservas y sanciones
-def estado_valido(estado, tabla):
-    # creo un diccionario de estados permitidos
-    # una especie de catalogo
-    estados_permitidos = {
-        "reserva": ["activa", "cancelada", "sin_asistencia", "finalizada"],
-        "sancion": ["activa", "inactiva", "anulada"]
-    }
-    # con esta funcion me aseguro que cuando modifique o cree una reserva
-    # o sancion, el estado sea uno de los permitidos
-    # me va a servir para las sanciones, que segun el profe son automaticas
-    # si la persona no esta a la hora marcada en la sala
-    if tabla not in estados_permitidos:
-        return False
-    return estado in estados_permitidos[tabla]
-
-# Validar login
-def login_valido(email, password):
-    if not email or not password:
-        return False
-    if "@" not in email or "." not in email:
-        return False
-    if len(password) < 4:
-        return False
-    return True
-
-
-
-# Obtener estadísticas para el dashboard
-def obtener_estadisticas_dashboard():
-
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    try:
-        cursor.execute("SELECT COUNT(*) AS total FROM sala")
-        total_salas = cursor.fetchone()["total"]
-
-        cursor.execute("SELECT COUNT(*) AS total FROM reserva WHERE estado = 'activa'")
-        reservas_activas = cursor.fetchone()["total"]
-
-        cursor.execute("SELECT COUNT(*) AS total FROM participante")
-        total_participantes = cursor.fetchone()["total"]
-
-        cursor.execute("SELECT COUNT(*) AS total FROM sancion_participante WHERE fecha_fin >= CURDATE()")
-        sanciones_activas = cursor.fetchone()["total"]
-
-        return {
-            "total_salas": total_salas,
-            "reservas_activas": reservas_activas,
-            "total_participantes": total_participantes,
-            "sanciones_activas": sanciones_activas
-        }
-
-    except Exception as e:
-        # Re-lanzamos el error para manejarlo en app.py
-        raise e
-    finally:
-        cursor.close()
-        close_connection(conn)
-
-# ---------------- CONSULTAS AUXILIARES ----------------
-
-# Aca algunas que podrian ir a logica, pero por organizacion las dejamos aca,
-# para no confundir con los ABM
-
-
-def obtener_edificios():
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("SELECT nombre_edificio FROM edificio")
-        edificios = [row[0] for row in cursor.fetchall()]
-        return edificios
-    except Exception as e:
-        raise e
-    finally:
-        cursor.close()
-        close_connection(conn)
-
-def obtener_salas():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("SELECT nombre_sala, edificio, capacidad FROM sala")
-        data = cursor.fetchall()
-        salas = [
-            {"nombre": row[0], "edificio": row[1], "capacidad": row[2]}
-            for row in data
-        ]
-        return salas
-    except Exception as e:
-        raise e
-    finally:
-        cursor.close()
-        close_connection(conn)
-
-def obtener_participantes():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("SELECT ci, nombre, apellido, email FROM participante")
-        data = cursor.fetchall()
-        participantes = [
-            {"ci": row[0], "nombre": row[1], "apellido": row[2], "email": row[3]}
-            for row in data
-        ]
-        return participantes
-    except Exception as e:
-        raise e
-    finally:
-        cursor.close()
-        close_connection(conn)
-
-def obtener_turnos():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("SELECT id_turno, hora_inicio, hora_fin FROM turno ORDER BY hora_inicio")
-        return cursor.fetchall()
-    except Exception as e:
-        raise e
-    finally:
-        cursor.close()
-        close_connection(conn)
-
-def obtener_turnos_formateados():
-    turnos = obtener_turnos()
-    lista = []
-    for t in turnos:
-        id_turno, inicio, fin = t
-        lista.append(f"{id_turno} | {inicio.strftime('%H:%M')}–{fin.strftime('%H:%M')}")
-    return lista
-
-def seleccionar_opcion(lista, titulo):
-    print(f"\n--- {titulo} ---")
-    for i, item in enumerate(lista, start=1):
-        print(f"{i}. {item}")
-    
-    while True:
-        opcion = input("Elige una opción: ").strip()
-        if opcion.isdigit() and 1 <= int(opcion) <= len(lista):
-            return lista[int(opcion) - 1]
-        print(" Opción inválida, intenta de nuevo.")

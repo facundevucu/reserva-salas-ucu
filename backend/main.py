@@ -13,6 +13,7 @@ def pantalla_login():
 
     while True:
         limpiar_pantalla()
+        limpiar_pantalla() # doble como el clear clears
         print("\n" + "="*50)
         print("SISTEMA DE GESTIÓN DE SALAS Y RESERVAS")
         print("="*50)
@@ -140,33 +141,38 @@ def mostrar_menu_admin():
 
 # ================== UTILIDADES DE SELECCIÓN ==================
 
-def _imprimir_lista(titulo, opciones, fmt):
+def _imprimir_lista(titulo, opciones):
+    # fmt recibe un elemento y devuelve su representación en string
     print(f"\n{titulo}")
     print("-" * max(10, len(titulo)))
+    
     if not opciones:
         print("No hay opciones disponibles.")
-        return
-    for idx, item in enumerate(opciones, start=1):
-        texto = fmt(item)
-        print(f"{idx}. {texto}")
+    else:
+        for i, item in enumerate(opciones, 1):
+            print(f"{i}. {item}")
     print("0. Volver")
 
 
-def seleccionar_opcion(titulo, opciones, fmt=lambda x: str(x)):
+def seleccionar_opcion(titulo, opciones):
 
     while True:
         limpiar_pantalla()
-        _imprimir_lista(titulo, opciones, fmt)
+        _imprimir_lista(titulo, opciones)
         if not opciones:
             input("Presiona Enter para continuar...")
             return None
+        
+        # strip para evitar espacios en blanco al inicio/final
         eleccion = input("Elige una opción: ").strip()
+        
         if eleccion == "0":
             return None
+        
         if eleccion.isdigit():
-            idx = int(eleccion)
-            if 1 <= idx <= len(opciones):
-                return opciones[idx - 1]
+            indice = int(eleccion)
+            if 1 <= indice <= len(opciones):
+                return opciones[indice - 1]
         print("Opción no válida.")
         input("Presiona Enter para intentar de nuevo...")
 
@@ -197,6 +203,7 @@ def menu_participantes():
 def crear_participante_menu():
     limpiar_pantalla()
     print("--- CREAR PARTICIPANTE ---")
+    # aca voy a usar el strip para evitar espacios al inicio/final (ejemplo: "  Juan  " -> "Juan")
     ci = input("Ingresa la cédula: ").strip()
     nombre = input("Ingresa el nombre: ").strip()
     apellido = input("Ingresa el apellido: ").strip()
@@ -204,6 +211,7 @@ def crear_participante_menu():
     
     if not participante_valido(ci, nombre, apellido, email):
         print(" Datos inválidos. Verifica los campos.")
+        # a implementar: mostrar errores específicos (ejemplo: cedula repetida)
     else:
         resultado = crear_persona(ci, nombre, apellido, email)
         if isinstance(resultado, dict):
@@ -218,10 +226,11 @@ def crear_participante_menu():
 def eliminar_participante_menu():
     participantes = listar_participantes_activos()
     seleccionado = seleccionar_opcion(
-        "Participantes activos (elige uno para eliminar)",
+        "Participantes activos (elegí uno para eliminar)",
         participantes,
         fmt=lambda p: f"{p['ci']} - {p['apellido']}, {p['nombre']} ({p['email']})",
     )
+    # cree una funcion anonima para formatear los datos de cada participante
     if not seleccionado:
         return
     resultado = eliminar_persona(seleccionado["ci"])
@@ -231,22 +240,25 @@ def eliminar_participante_menu():
 def modificar_participante_menu():
     participantes = listar_participantes_activos()
     seleccionado = seleccionar_opcion(
-        "Participantes activos (elige uno para modificar)",
+        "Participantes activos (elegí uno para modificar)",
         participantes,
         fmt=lambda p: f"{p['ci']} - {p['apellido']}, {p['nombre']} ({p['email']})",
     )
+    # repito la funcion anonima para formatear los datos
     if not seleccionado:
         return
     ci = str(seleccionado["ci"])  # usar como string para inputs
     
-    print("Deja en blanco lo que no deseas modificar")
+    print("Dejá en blanco lo que no deseas modificar")
+    # vuelvo a usar strip para evitar espacios en blanco
+    # none es una opcion, por si el usuario no quiere cambiar ese campo
     nombre = input("Nuevo nombre (opcional): ").strip() or None
     apellido = input("Nuevo apellido (opcional): ").strip() or None
     email = input("Nuevo email (opcional): ").strip() or None
     
     resultado = modificar_persona(ci, nombre, apellido, email)
     print(f" {resultado}" if "correctamente" in resultado else f" {resultado}")
-    input("Presiona Enter para continuar...")
+    input("Presioná Enter para continuar...")
 
 # ================== MENU SALAS ==================
 
@@ -273,7 +285,7 @@ def menu_salas():
             break
         else:
             print("Opción no válida")
-            input("Presiona Enter para continuar...")
+            input("Presioná Enter para continuar...")
 
 def crear_sala_menu():
     limpiar_pantalla()
@@ -281,11 +293,13 @@ def crear_sala_menu():
     nombre_sala = input("Nombre de la sala: ").strip()
     edificios = listar_edificios()
     edificio_sel = seleccionar_opcion(
-        "Elige un edificio",
+        "Elegí un edificio",
         edificios,
         fmt=lambda e: e["nombre_edificio"],
     )
+    # vuelvo a usar la funcion anonima para formatear los edificios
     if not edificio_sel:
+        # si el usuario cancela la seleccion ( con 0 ) , vuelvo para atras
         return
     edificio = edificio_sel["nombre_edificio"]
     try:
@@ -323,16 +337,17 @@ def eliminar_sala_menu():
         salas,
         fmt=lambda s: f"{s['nombre']} (cap {s['capacidad']}, {s['tipo_sala']})",
     )
+    # me creo una funcion anonima "s" para formatear las salas
     if not sala_sel:
         return
     resultado = eliminar_sala(sala_sel["nombre"], sala_sel["edificio"])
     print(f" {resultado}" if "correctamente" in resultado else f" {resultado}")
-    input("Presiona Enter para continuar...")
+    input("Presioná Enter para continuar...")
 
 def modificar_sala_menu():
     edificios = listar_edificios()
     edificio_sel = seleccionar_opcion(
-        "Elige un edificio",
+        "Elegí un edificio",
         edificios,
         fmt=lambda e: e["nombre_edificio"],
     )
@@ -353,11 +368,12 @@ def modificar_sala_menu():
     try:
         capacidad_input = input("Nueva capacidad (opcional): ").strip()
         capacidad = int(capacidad_input) if capacidad_input else None
-    except ValueError:
+    except ValueError: # si el usuario ingresa algo que no es numero lo agarramos
         capacidad = None
     
     tipo_sala = None
     elegir_tipo = input("¿Cambiar tipo de sala? (s/N): ").strip().lower()
+    # defino opciones (sin distinguir mayus) para cambiar el tipo de sala
     if elegir_tipo == 's':
         tipo_sel = seleccionar_opcion("Nuevo tipo de sala", ["libre", "posgrado", "docente"], fmt=lambda t: t)
         if not tipo_sel:
@@ -367,7 +383,7 @@ def modificar_sala_menu():
     
     resultado = modificar_sala(nombre_sala, edificio, capacidad, tipo_sala)
     print(f" {resultado}" if "correctamente" in resultado else f" {resultado}")
-    input("Presiona Enter para continuar...")
+    input("Presioná Enter para continuar...")
 
 def ver_salas_menu():
     limpiar_pantalla()
@@ -390,7 +406,7 @@ def menu_reservas():
         print("2. Cancelar reserva")
         print("3. Modificar reserva")
         print("4. Volver al menú principal")
-        opcion = input("Elige una opción: ")
+        opcion = input("Elegí una opción: ")
         
         if opcion == "1":
             crear_reserva_menu()
@@ -414,10 +430,10 @@ def crear_reserva_menu():
         input("Presiona Enter para continuar...")
         return
 
-    # Edificio -> Sala
+    # Edificio - Sala
     edificios = listar_edificios()
     edificio_sel = seleccionar_opcion(
-        "Elige un edificio",
+        "Elegí un edificio",
         edificios,
         fmt=lambda e: e["nombre_edificio"],
     )
@@ -430,6 +446,7 @@ def crear_reserva_menu():
         salas,
         fmt=lambda s: f"{s['nombre']} (cap {s['capacidad']}, {s['tipo_sala']})",
     )
+    # vuelvo a usar la funcion anonima para formatear las salas
     if not sala_sel:
         return
     nombre_sala = sala_sel["nombre"]
@@ -455,38 +472,40 @@ def crear_reserva_menu():
         return
     
     if not turno_sel['disponible']:
-        print(" Este turno ya está ocupado. Elige otro.")
-        input("Presiona Enter para continuar...")
+        print(" Este turno ya está ocupado. Elegí otro.")
+        input("Presioná Enter para continuar...")
         return
     
     id_turno = int(turno_sel["id_turno"])
 
     # Cantidad de horas
-    print("\n¿Cuántas horas deseas reservar?")
+    print("\n¿Cuántas horas deseás reservar?")
     print("1. Una hora")
     print("2. Dos horas consecutivas")
     while True:
-        opcion_horas = input("Elige (1 o 2): ").strip()
+        opcion_horas = input("Elegí (1 o 2): ").strip()
         if opcion_horas in ['1', '2']:
             cantidad_horas = int(opcion_horas)
             break
-        print(" Opción no válida. Elige 1 o 2.")
-
+        print(" Opción no válida. Elegí 1 o 2.")
+        # de a poco voy capturando todos los errores
     # Cantidad de participantes
     try:
         cantidad = int(input("Cantidad de participantes: "))
     except ValueError:
         print(" La cantidad debe ser un número")
-        input("Presiona Enter para continuar...")
+        input("Presioná Enter para continuar...")
         return
 
     resultado = crear_reserva_multiple(ci, nombre_sala, edificio, id_turno, fecha, cantidad, cantidad_horas)
     if isinstance(resultado, dict):
         print(f" {resultado['mensaje']}")
         print(f"   IDs de reserva: {', '.join(map(str, resultado['ids_reserva']))}")
+    # si yo hice una reserava doble, se me guardan dos Ids, con map los convierto en string
+    # y con join los junto con comas para luego hacer consultas y que aparezcan juntos
     else:
         print(f" {resultado}")
-    input("Presiona Enter para continuar...")
+    input("Presioná Enter para continuar...")
 
 def cancelar_reserva_menu():
     reservas = listar_reservas(estado="activa")
@@ -495,19 +514,21 @@ def cancelar_reserva_menu():
         reservas,
         fmt=lambda r: f"{r['id_reserva']} - {r['fecha']} {r['hora_inicio']}-{r['hora_fin']} | {r['nombre_sala']} ({r['edificio']})",
     )
+    # vuelvo a usar la funcion anonima para formatear las reservas
     if not sel:
         return
     resultado = eliminar_reserva(sel["id_reserva"])
     print(f" {resultado}" if "correctamente" in resultado else f" {resultado}")
-    input("Presiona Enter para continuar...")
+    input("Presioná Enter para continuar...")
 
 def modificar_reserva_menu():
     reservas = listar_reservas()
     sel = seleccionar_opcion(
-        "Elige una reserva a modificar",
+        "Elegí una reserva a modificar",
         reservas,
         fmt=lambda r: f"{r['id_reserva']} - {r['fecha']} {r['hora_inicio']}-{r['hora_fin']} | {r['nombre_sala']} ({r['edificio']}) [{r['estado']}]",
     )
+    # vuelvo a usar la funcion anonima para formatear las reservas
     if not sel:
         return
     id_reserva = sel["id_reserva"]
@@ -525,6 +546,7 @@ def modificar_reserva_menu():
                 salas,
                 fmt=lambda s: f"{s['nombre']} (cap {s['capacidad']}, {s['tipo_sala']})",
             )
+            # vuelvo a usar la funcion anonima para formatear las salas
             if sala_sel:
                 nombre_sala = sala_sel["nombre"]
 
@@ -607,11 +629,12 @@ def eliminar_sancion_menu():
         sanciones,
         fmt=lambda s: f"{s['id_sancion']} - {s['ci_participante']} {s['apellido']}, {s['nombre']} ({s['fecha_inicio']} -> {s['fecha_fin']})",
     )
+    # vuelvo a usar la funcion anonima para formatear las sanciones
     if not sel:
         return
     resultado = eliminar_sancion(sel["id_sancion"])
     print(f" {resultado}" if "correctamente" in resultado else f" {resultado}")
-    input("Presiona Enter para continuar...")
+    input("Presioná Enter para continuar...")
 
 def levantar_sancion_menu():
     sanciones = listar_sanciones_activas()
@@ -620,25 +643,28 @@ def levantar_sancion_menu():
         sanciones,
         fmt=lambda s: f"{s['id_sancion']} - {s['ci_participante']} {s['apellido']}, {s['nombre']} ({s['fecha_inicio']} -> {s['fecha_fin']})",
     )
+    # vuelvo a usar la funcion anonima para formatear las sanciones
     if not sel:
         return
     resultado = levantar_sancion(sel["id_sancion"])
     print(f" {resultado}" if "correctamente" in resultado else f" {resultado}")
-    input("Presiona Enter para continuar...")
+    input("Presioná Enter para continuar...")
 
 def modificar_sancion_menu():
     sanciones = listar_sanciones_activas()
     sel = seleccionar_opcion(
-        "Elige una sanción a modificar",
+        "Elegí una sanción a modificar",
         sanciones,
         fmt=lambda s: f"{s['id_sancion']} - {s['ci_participante']} {s['apellido']}, {s['nombre']} ({s['fecha_inicio']} -> {s['fecha_fin']})",
     )
+    # vuelvo a usar la funcion anonima para formatear las sanciones
     if not sel:
         return
     id_sancion = sel["id_sancion"]
     
     print("Deja en blanco lo que no deseas modificar")
     motivo = input("Nuevo motivo (opcional): ").strip() or None
+    # uso el strip para formatear el comentario por si esta mal ingresado
     fecha_inicio = input("Nueva fecha de inicio (opcional, YYYY-MM-DD): ").strip() or None
     fecha_fin = input("Nueva fecha de fin (opcional, YYYY-MM-DD): ").strip() or None
     estado = None
@@ -705,6 +731,7 @@ def crear_reserva_usuario(ci_sesion):
         disponibilidad,
         fmt=lambda t: f"{t['hora_inicio'][:5]} - {t['hora_fin'][:5]} {' DISPONIBLE' if t['disponible'] else ' OCUPADO'}",
     )
+    # formateo la hora y agarro solo los primeros 5 caracteres (hora y minutos)
     if not turno_sel:
         return
     
@@ -729,18 +756,19 @@ def crear_reserva_usuario(ci_sesion):
     # Cantidad de participantes
     try:
         cantidad = int(input("Cantidad de participantes: "))
-    except ValueError:
+    except ValueError: # value error por si el usuario ingresa algo que no es numero
         print(" La cantidad debe ser un número")
-        input("Presiona Enter para continuar...")
+        input("Presioná Enter para continuar...")
         return
 
     resultado = crear_reserva_multiple(str(ci_sesion), nombre_sala, edificio, id_turno, fecha, cantidad, cantidad_horas)
     if isinstance(resultado, dict):
+        # resultado es un diccionario?? osea es una reserva doble??
         print(f" {resultado['mensaje']}")
         print(f"   IDs de reserva: {', '.join(map(str, resultado['ids_reserva']))}")
     else:
         print(f" {resultado}")
-    input("Presiona Enter para continuar...")
+    input("Presioná Enter para continuar...")
 
 
 def ver_mis_reservas_menu(ci_sesion):
@@ -769,7 +797,7 @@ def modificar_mi_reserva_menu(ci_sesion):
         return
     id_reserva = sel["id_reserva"]
 
-    # Nuevo edificio->sala (opcional)
+    # Nuevo edificio - sala (opcional)
     nombre_sala = None
     if input("¿Cambiar sala? (s/N): ").strip().lower() == 's':
         edif = seleccionar_opcion("Elige edificio", listar_edificios(), fmt=lambda e: e['nombre_edificio'])
@@ -892,12 +920,11 @@ def main_admin():
         elif opcion == "5":
             menu_reportes()
         elif opcion == "6":
-            print("👋 ¡Hasta luego!")
+            print(" Hasta luego!")
             break
         else:
             print("Opción no válida")
-            input("Presiona Enter para continuar...")
-
+            input("Presioná Enter para continuar...")
 
 def main_usuario(ci_sesion, correo_sesion):
 
