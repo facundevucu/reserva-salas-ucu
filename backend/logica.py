@@ -13,7 +13,7 @@ from validaciones import (
 import random
 import string
 
-def generar_contraseña_aleatoria(longitud=8):
+def generar_contrasena_aleatoria(longitud=8):
     caracteres = string.ascii_letters + string.digits
     return ''.join(random.choice(caracteres) for _ in range(longitud))
 
@@ -169,23 +169,23 @@ def crear_persona(ci_participante, nombre, apellido, email):
         """
         cursor.execute(query_participante, (ci_participante, nombre, apellido, email))
         
-        # Generar contraseña automática
-        contraseña_generada = generar_contraseña_aleatoria()
+        # Generar contrasena automática
+        contrasena_generada = generar_contrasena_aleatoria()
         
         # Insertar en tabla login con rol usuario por defecto
         query_login = """
-            INSERT INTO login (correo, contraseña, rol, ci_participante, debe_cambiar_contraseña)
+            INSERT INTO login (correo, contrasena, rol, ci_participante, debe_cambiar_contrasena)
             VALUES (%s, %s, 'usuario', %s, TRUE)
         """
-        cursor.execute(query_login, (email, contraseña_generada, ci_participante))
+        cursor.execute(query_login, (email, contrasena_generada, ci_participante))
         
         conn.commit()
         cursor.close()
         conn.close()
         
         return {
-            'mensaje': f"Participante creado correctamente. Contraseña generada: {contraseña_generada}",
-            'contraseña': contraseña_generada
+            'mensaje': f"Participante creado correctamente. contrasena generada: {contrasena_generada}",
+            'contrasena': contrasena_generada
         }
     
     except mysql.connector.Error as err:
@@ -770,7 +770,7 @@ def autenticar_usuario(correo, contrasena):
         query = """
             SELECT rol, correo 
             FROM login 
-            WHERE correo = %s AND contraseña = %s
+            WHERE correo = %s AND contrasena = %s
         """
         cursor.execute(query, (correo, contrasena))
         resultado = cursor.fetchone()
@@ -1079,7 +1079,7 @@ def agregar_participantes_a_reservas(ids_reserva, participantes):
             close_connection(conn)
         return f"Error al agregar participantes: {e}"
 
-def cambiar_contraseña(correo, contraseña_actual, contraseña_nueva):
+def cambiar_contrasena(correo, contrasena_actual, contrasena_nueva):
 
     conn = get_db_connection()
     if not conn:
@@ -1088,8 +1088,8 @@ def cambiar_contraseña(correo, contraseña_actual, contraseña_nueva):
     try:
         cursor = conn.cursor(dictionary=True)
         
-        # Verificar contraseña actual
-        query_verificar = "SELECT contraseña FROM login WHERE correo = %s"
+        # Verificar contrasena actual
+        query_verificar = "SELECT contrasena FROM login WHERE correo = %s"
         cursor.execute(query_verificar, (correo,))
         resultado = cursor.fetchone()
         
@@ -1098,18 +1098,18 @@ def cambiar_contraseña(correo, contraseña_actual, contraseña_nueva):
             conn.close()
             return "Usuario no encontrado"
         
-        if resultado['contraseña'] != contraseña_actual:
+        if resultado['contrasena'] != contrasena_actual:
             cursor.close()
             conn.close()
-            return "Contraseña actual incorrecta"
+            return "contrasena actual incorrecta"
         
-        # Actualizar contraseña y marcar que ya no debe cambiarla
+        # Actualizar contrasena y marcar que ya no debe cambiarla
         query_actualizar = """
             UPDATE login 
-            SET contraseña = %s, debe_cambiar_contraseña = FALSE 
+            SET contrasena = %s, debe_cambiar_contrasena = FALSE 
             WHERE correo = %s
         """
-        cursor.execute(query_actualizar, (contraseña_nueva, correo))
+        cursor.execute(query_actualizar, (contrasena_nueva, correo))
         conn.commit()
         cursor.close()
         conn.close()
@@ -1119,9 +1119,9 @@ def cambiar_contraseña(correo, contraseña_actual, contraseña_nueva):
     except mysql.connector.Error as err:
         if conn:
             conn.close()
-        return f"Error al cambiar contraseña: {err}"
+        return f"Error al cambiar contrasena: {err}"
 
-def verificar_debe_cambiar_contraseña(correo):
+def verificar_debe_cambiar_contrasena(correo):
 
     conn = get_db_connection()
     if not conn:
@@ -1129,14 +1129,14 @@ def verificar_debe_cambiar_contraseña(correo):
     
     try:
         cursor = conn.cursor(dictionary=True)
-        query = "SELECT debe_cambiar_contraseña FROM login WHERE correo = %s"
+        query = "SELECT debe_cambiar_contrasena FROM login WHERE correo = %s"
         cursor.execute(query, (correo,))
         resultado = cursor.fetchone()
         cursor.close()
         conn.close()
         
         if resultado:
-            return resultado['debe_cambiar_contraseña']
+            return resultado['debe_cambiar_contrasena']
         return False
         
     except mysql.connector.Error as err:

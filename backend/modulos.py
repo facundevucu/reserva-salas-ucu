@@ -22,7 +22,7 @@ def pantalla_login():
         print("Por favor, inicia sesión\n")
         
         correo = input("Correo: ").strip()
-        contrasena = input("Contraseña: ").strip()
+        contrasena = input("contrasena: ").strip()
         
         usuario = autenticar_usuario(correo, contrasena)
         
@@ -31,11 +31,11 @@ def pantalla_login():
             input("Presiona Enter para continuar...")
             continue
         
-        # Verificar si debe cambiar contraseña
-        if verificar_debe_cambiar_contraseña(correo):
-            print("\n  Debes cambiar tu contraseña antes de continuar.")
-            if not forzar_cambio_contraseña(correo, contrasena):
-                print(" No se pudo cambiar la contraseña. Intenta nuevamente.")
+        # Verificar si debe cambiar contrasena
+        if verificar_debe_cambiar_contrasena(correo):
+            print("\n  Debes cambiar tu contrasena antes de continuar.")
+            if not forzar_cambio_contrasena(correo, contrasena):
+                print(" No se pudo cambiar la contrasena. Intenta nuevamente.")
                 input("Presiona Enter para continuar...")
                 continue
         
@@ -51,29 +51,29 @@ def pantalla_login():
         return {'rol': 'admin', 'correo': correo, 'ci': None}
 
 
-def forzar_cambio_contraseña(correo, contraseña_actual):
+def forzar_cambio_contrasena(correo, contrasena_actual):
 
     print("\n" + "-"*50)
-    print("CAMBIO DE CONTRASEÑA OBLIGATORIO")
+    print("CAMBIO DE contrasena OBLIGATORIO")
     print("-"*50)
     
     while True:
-        nueva_contraseña = input("Nueva contraseña (mínimo 8 caracteres): ").strip()
+        nueva_contrasena = input("Nueva contrasena (mínimo 8 caracteres): ").strip()
         
-        if len(nueva_contraseña) < 8:
-            print(" La contraseña debe tener al menos 8 caracteres.")
+        if len(nueva_contrasena) < 8:
+            print(" La contrasena debe tener al menos 8 caracteres.")
             continue
         
-        confirmar = input("Confirma la nueva contraseña: ").strip()
+        confirmar = input("Confirma la nueva contrasena: ").strip()
         
-        if nueva_contraseña != confirmar:
-            print(" Las contraseñas no coinciden. Intenta nuevamente.")
+        if nueva_contrasena != confirmar:
+            print(" Las contrasenas no coinciden. Intenta nuevamente.")
             continue
         
-        resultado = cambiar_contraseña(correo, contraseña_actual, nueva_contraseña)
+        resultado = cambiar_contrasena(correo, contrasena_actual, nueva_contrasena)
         
         if resultado is True:
-            print(" Contraseña cambiada exitosamente.")
+            print(" contrasena cambiada exitosamente.")
             input("Presiona Enter para continuar...")
             return True
         else:
@@ -83,32 +83,32 @@ def forzar_cambio_contraseña(correo, contraseña_actual):
                 return False
 
 
-def cambiar_mi_contraseña_menu(correo):
+def cambiar_mi_contrasena_menu(correo):
 
     limpiar_pantalla()
-    print("--- CAMBIAR MI CONTRASEÑA ---")
+    print("--- CAMBIAR MI contrasena ---")
     
-    contraseña_actual = input("Contraseña actual: ").strip()
+    contrasena_actual = input("contrasena actual: ").strip()
     
     while True:
-        nueva_contraseña = input("Nueva contraseña (mínimo 8 caracteres): ").strip()
+        nueva_contrasena = input("Nueva contrasena (mínimo 8 caracteres): ").strip()
         
-        if len(nueva_contraseña) < 8:
-            print(" La contraseña debe tener al menos 8 caracteres.")
+        if len(nueva_contrasena) < 8:
+            print(" La contrasena debe tener al menos 8 caracteres.")
             continue
         
-        confirmar = input("Confirma la nueva contraseña: ").strip()
+        confirmar = input("Confirma la nueva contrasena: ").strip()
         
-        if nueva_contraseña != confirmar:
-            print(" Las contraseñas no coinciden. Intenta nuevamente.")
+        if nueva_contrasena != confirmar:
+            print(" Las contrasenas no coinciden. Intenta nuevamente.")
             continue
         
         break
     
-    resultado = cambiar_contraseña(correo, contraseña_actual, nueva_contraseña)
+    resultado = cambiar_contrasena(correo, contrasena_actual, nueva_contrasena)
     
     if resultado is True:
-        print(" Contraseña cambiada exitosamente.")
+        print(" contrasena cambiada exitosamente.")
     else:
         print(f"{resultado}")
     
@@ -125,7 +125,7 @@ def mostrar_menu_usuario():
     print("4. Cancelar mi reserva")
     print("5. Registrar mi asistencia")
     print("6. Consultar mis sanciones")
-    print("7. Cambiar mi contraseña")
+    print("7. Cambiar mi contrasena")
     print("8. Salir")
     print("="*50)
 
@@ -266,8 +266,8 @@ def crear_participante_menu():
         resultado = crear_persona(ci, nombre, apellido, email)
         if isinstance(resultado, dict):
             print(f"\n {resultado['mensaje']}")
-            print(f"\n  IMPORTANTE: Guarda esta contraseña temporal:")
-            print(f"   Contraseña: {resultado['contraseña']}")
+            print(f"\n  IMPORTANTE: Guarda esta contrasena temporal:")
+            print(f"   contrasena: {resultado['contrasena']}")
             print(f"\n   El usuario deberá cambiarla en su primer login.")
         else:
             print(f" {resultado}")
@@ -1219,7 +1219,7 @@ def main_usuario(ci_sesion, correo_sesion):
         elif opcion == "6":
             consultar_mis_sanciones_menu(ci_sesion)
         elif opcion == "7":
-            cambiar_mi_contraseña_menu(correo_sesion)
+            cambiar_mi_contrasena_menu(correo_sesion)
         elif opcion == "8":
             print(" ¡Hasta luego!")
             break

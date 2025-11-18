@@ -1,15 +1,6 @@
-create database if not exists reserva_salas_ucu_db;
-use reserva_salas_ucu_db;
--- Primero creo el login ya que es independiente
+create database if not exists obligatorio_bdd;
+use obligatorio_bdd;
 
-create table login (
-    correo VARCHAR(100) PRIMARY KEY,
-    contraseña VARCHAR(255) NOT NULL,
-    rol ENUM('admin', 'usuario') NOT NULL DEFAULT 'usuario',
-    ci_participante INT,
-    debe_cambiar_contraseña BOOLEAN DEFAULT TRUE,
-    FOREIGN KEY (ci_participante) REFERENCES participante(ci) ON DELETE CASCADE
-);
 
 -- Se organiza de mayor a menor tamaño de la organización/objeto
 create table facultad (
@@ -33,6 +24,15 @@ create table participante (
     email VARCHAR(30),
     estado ENUM('activo', 'inactivo') DEFAULT 'activo',
     PRIMARY KEY(ci)
+);
+
+create table login (
+    correo VARCHAR(100) PRIMARY KEY,
+    contrasena VARCHAR(255) NOT NULL,
+    rol ENUM('admin', 'usuario') NOT NULL DEFAULT 'usuario',
+    ci_participante INT,
+    debe_cambiar_contrasena BOOLEAN DEFAULT TRUE,
+    FOREIGN KEY (ci_participante) REFERENCES participante(ci) ON DELETE CASCADE
 );
 
 create table participante_programa_academico (

@@ -1,4 +1,4 @@
-USE reserva_salas_ucu_db;
+USE obligatorio_bdd;
 
 -- FAcultades
 INSERT INTO facultad (nombre) VALUES
@@ -53,7 +53,7 @@ INSERT INTO participante (ci, nombre, apellido, email) VALUES
     (78901234, 'Valentina', 'López', 'valentina.lopez@ucu.edu.uy');
 
 -- Login
-INSERT INTO login (correo, contraseña, rol, ci_participante) VALUES
+INSERT INTO login (correo, contrasena, rol, ci_participante) VALUES
     ('facundo.gonzales@ucu.edu.uy', 'pass1234', 'admin', 12345678),
     ('ana.perez@ucu.edu.uy', 'pass2345', 'usuario', 23456789),
     ('maria.gonzalez@ucu.edu.uy', 'pass3456', 'usuario', 34567890),
@@ -91,12 +91,12 @@ INSERT INTO reserva (nombre_sala, edificio, fecha, id_turno, estado) VALUES
 
 -- Reserva-Participantes
 INSERT INTO reserva_participante (ci_participante, id_reserva, fecha_solicitud_reserva, asistencia) VALUES
-(12345678, 1, '2025-10-20', 'true'),   -- Facundo - Sala A1
-(23456789, 2, '2025-10-21', 'true'),  -- Ana - Sala A2
-(34567890, 3, '2025-10-21', 'false'), -- María - Sala B1
-(45678901, 4, '2025-10-22', 'true'),  -- Carlos - Sala C1
-(56789012, 5, '2025-10-23', 'false'), -- Laura - Sala D1
-(67890123, 6, '2025-10-24', 'true');  -- Javier - Sala E1
+(12345678, 1, '2025-10-20', 'presente'),   -- Facundo - Sala A1
+(23456789, 2, '2025-10-21', 'presente'),  -- Ana - Sala A2
+(34567890, 3, '2025-10-21', 'ausente'), -- María - Sala B1
+(45678901, 4, '2025-10-22', 'presente'),  -- Carlos - Sala C1
+(56789012, 5, '2025-10-23', 'ausente'), -- Laura - Sala D1
+(67890123, 6, '2025-10-24', 'justificado');  -- Javier - Sala E1
 
 -- Sanciones con respecto a las reservas anteriores
 INSERT INTO sancion_participante (ci_participante, motivo, fecha_inicio, fecha_fin) VALUES

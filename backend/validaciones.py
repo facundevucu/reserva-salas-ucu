@@ -1,5 +1,3 @@
-from db_connection import get_db_connection as get_connection
-from db_connection import close_connection
 from db_connection import get_db_connection, close_connection
 
 
@@ -7,7 +5,7 @@ from db_connection import get_db_connection, close_connection
 
 # Verificar si el usuario tiene una sanción activa
 def tiene_sancion_activa(ci_participante):
-    conn = get_connection()
+    conn = get_db_connection()
     cursor = conn.cursor()
     query = """
         SELECT 1
@@ -23,7 +21,7 @@ def tiene_sancion_activa(ci_participante):
 
 # Verificar si el participante existe
 def existe_participante(ci_participante):
-    conn = get_connection()
+    conn = get_db_connection()
     cursor = conn.cursor()
     query = "SELECT 1 FROM participante WHERE ci = %s;"
     cursor.execute(query, (ci_participante,))
@@ -48,7 +46,7 @@ def participante_valido(ci, nombre, apellido, email):
 
 # Verificar si la sala está disponible
 def sala_ocupada(nombre_sala, edificio, id_turno, fecha):
-    conn = get_connection()
+    conn = get_db_connection()
     cursor = conn.cursor()
     query = """
         SELECT 1
@@ -68,7 +66,7 @@ def sala_ocupada(nombre_sala, edificio, id_turno, fecha):
 
 # Verificar capacidad de la sala
 def excede_capacidad(nombre_sala, edificio, cantidad_participantes):
-    conn = get_connection()
+    conn = get_db_connection()
     cursor = conn.cursor()
     query = """
         SELECT capacidad
@@ -87,7 +85,7 @@ def excede_capacidad(nombre_sala, edificio, cantidad_participantes):
 
 # Restriccion por tipo de sala
 def validar_tipo_sala(nombre_sala, edificio, ci_participante):
-    conn = get_connection()
+    conn = get_db_connection()
     cursor = conn.cursor()
     query = """
         SELECT s.tipo_sala, pa.tipo AS tipo_programa, pp.rol
@@ -129,7 +127,7 @@ def validar_tipo_sala(nombre_sala, edificio, ci_participante):
 def excede_reservas_semanales(ci_participante, nombre_sala=None, edificio=None):
     # Si docente reserva sala docente o posgrado reserva sala posgrado - sin límite
     if nombre_sala and edificio:
-        conn = get_connection()
+        conn = get_db_connection()
         cursor = conn.cursor()
         query_excepcion = """
             SELECT s.tipo_sala, pa.tipo AS tipo_programa, pp.rol
@@ -153,7 +151,7 @@ def excede_reservas_semanales(ci_participante, nombre_sala=None, edificio=None):
                 return False
     
     # En todos los demás casos, aplicar límite de 3 reservas/semana
-    conn = get_connection()
+    conn = get_db_connection()
     cursor = conn.cursor()
     query = """
         SELECT COUNT(*)
@@ -173,7 +171,7 @@ def excede_reservas_semanales(ci_participante, nombre_sala=None, edificio=None):
 def excede_horas_diarias(ci_participante, fecha, nombre_sala=None, edificio=None):
     # Si docente reserva sala docente o posgrado reserva sala posgrado - sin límite
     if nombre_sala and edificio:
-        conn = get_connection()
+        conn = get_db_connection()
         cursor = conn.cursor()
         query_excepcion = """
             SELECT s.tipo_sala, pa.tipo AS tipo_programa, pp.rol
@@ -197,7 +195,7 @@ def excede_horas_diarias(ci_participante, fecha, nombre_sala=None, edificio=None
                 return False
     
     # En todos los demás casos, aplicar límite de 2 horas/día
-    conn = get_connection()
+    conn = get_db_connection()
     cursor = conn.cursor()
     query = """
         SELECT SUM(TIMESTAMPDIFF(HOUR, t.hora_inicio, t.hora_fin))
@@ -217,7 +215,7 @@ def excede_horas_diarias(ci_participante, fecha, nombre_sala=None, edificio=None
 
 # Validar si la fecha a reservar es futura
 def fecha_valida(fecha):
-    conn = get_connection()
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT %s >= CURDATE();", (fecha,))
     # No uso query porque es una consulta simple
@@ -228,7 +226,7 @@ def fecha_valida(fecha):
 
 # Participante tiene otra reserva activa en el mismo turno y fecha
 def participante_ocupado_en_turno(ci_participante, fecha, id_turno):
-        conn = get_connection()
+        conn = get_db_connection()
         cursor = conn.cursor()
         query = """
                 SELECT 1

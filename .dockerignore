@@ -1,0 +1,25 @@
+# Python
+ython__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual envs
+.venv/
+venv/
+ENV/
+
+# VCS
+.git/
+.gitignore
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Docker
+.env
+docker-compose.override.yml
