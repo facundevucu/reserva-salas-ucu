@@ -24,13 +24,20 @@ como en Windows.
     Luego iniciar la aplicación: 
     - python backend/main.py
 
-5.  Usuario inicial para pruebas:
-    Correo: facundo.gonzales@ucu.edu.uy
-    Contraseña: pass1234 
-    Rol: admin
-    Correo: ana.perez@ucu.edu.uy
-    Contraseña: pass2345
-    Rol: estudiante
+5.  Usuarios iniciales para pruebas:
+    
+    **Administrador:**
+    - Correo: facundo.gonzales@ucu.edu.uy
+    - Contraseña: pass1234 
+    - Rol: admin
+    
+    **Usuario regular:**
+    - Correo: ana.perez@ucu.edu.uy
+    - Contraseña: pass2345
+    - Rol: usuario
+    
+    **Nota de Seguridad:** Todas las contraseñas están hasheadas con SHA-256 en la base de datos.
+
 
 6.  Detener los contenedores:
     - docker compose down

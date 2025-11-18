@@ -52,15 +52,22 @@ INSERT INTO participante (ci, nombre, apellido, email) VALUES
     (67890123, 'Javier', 'Fernández', 'javier.fernandez@ucu.edu.uy'),
     (78901234, 'Valentina', 'López', 'valentina.lopez@ucu.edu.uy');
 
--- Login
+-- Login (contraseñas hasheadas con SHA-256)
+-- pass1234 -> bd94dcda26fccb4e68d6a31f9b5aac0b571ae266d822620e901ef7ebe3a11d4f
+-- pass2345 -> 13bb2e1f5eab8fd7f85d0a71622888b03c6de50ca5b739250185fd875b8cdbe8
+-- pass3456 -> 3943e10f0b6889b6ae1560c1e6ae99615ee68170f8cf24dde5ae59aed76ba2c2
+-- pass4567 -> ced75643425df8422f6b947248904aad4b0a471da94c6618be2819b8fb455e77
+-- pass5678 -> e8fa823a76f3aaf7068fd2068ba81d1fcb3b680bd854276ddc42d6139754240b
+-- pass6789 -> 202681d5a66574ea64184a3083fb6bb4101f5d4c0f0afe35c8a5071bedb7a267
+-- pass7890 -> 62ebdc70c80e642c82c9ed71670791a99309fbab6fe0be4850b34d0e5b054d49
 INSERT INTO login (correo, contrasena, rol, ci_participante) VALUES
-    ('facundo.gonzales@ucu.edu.uy', 'pass1234', 'admin', 12345678),
-    ('ana.perez@ucu.edu.uy', 'pass2345', 'usuario', 23456789),
-    ('maria.gonzalez@ucu.edu.uy', 'pass3456', 'usuario', 34567890),
-    ('carlos.rodriguez@ucu.edu.uy', 'pass4567', 'usuario', 45678901),
-    ('laura.martinez@ucu.edu.uy', 'pass5678', 'usuario', 56789012),
-    ('javier.fernandez@ucu.edu.uy', 'pass6789', 'usuario', 67890123),
-    ('valentina.lopez@ucu.edu.uy', 'pass7890', 'usuario', 78901234);
+    ('facundo.gonzales@ucu.edu.uy', 'bd94dcda26fccb4e68d6a31f9b5aac0b571ae266d822620e901ef7ebe3a11d4f', 'admin', 12345678),
+    ('ana.perez@ucu.edu.uy', '13bb2e1f5eab8fd7f85d0a71622888b03c6de50ca5b739250185fd875b8cdbe8', 'usuario', 23456789),
+    ('maria.gonzalez@ucu.edu.uy', '3943e10f0b6889b6ae1560c1e6ae99615ee68170f8cf24dde5ae59aed76ba2c2', 'usuario', 34567890),
+    ('carlos.rodriguez@ucu.edu.uy', 'ced75643425df8422f6b947248904aad4b0a471da94c6618be2819b8fb455e77', 'usuario', 45678901),
+    ('laura.martinez@ucu.edu.uy', 'e8fa823a76f3aaf7068fd2068ba81d1fcb3b680bd854276ddc42d6139754240b', 'usuario', 56789012),
+    ('javier.fernandez@ucu.edu.uy', '202681d5a66574ea64184a3083fb6bb4101f5d4c0f0afe35c8a5071bedb7a267', 'usuario', 67890123),
+    ('valentina.lopez@ucu.edu.uy', '62ebdc70c80e642c82c9ed71670791a99309fbab6fe0be4850b34d0e5b054d49', 'usuario', 78901234);
 
 -- Turnos
 INSERT INTO turno (hora_inicio, hora_fin) VALUES

@@ -12,6 +12,10 @@ from validaciones import (
 )
 import random
 import string
+import hashlib
+
+def hashear_contrasena(contrasena):
+    return hashlib.sha256(contrasena.encode()).hexdigest()
 
 def generar_contrasena_aleatoria(longitud=8):
     caracteres = string.ascii_letters + string.digits
@@ -171,13 +175,14 @@ def crear_persona(ci_participante, nombre, apellido, email):
         
         # Generar contrasena automática
         contrasena_generada = generar_contrasena_aleatoria()
+        contrasena_hash = hashear_contrasena(contrasena_generada)  # Hashear contraseña
         
         # Insertar en tabla login con rol usuario por defecto
         query_login = """
             INSERT INTO login (correo, contrasena, rol, ci_participante, debe_cambiar_contrasena)
             VALUES (%s, %s, 'usuario', %s, TRUE)
         """
-        cursor.execute(query_login, (email, contrasena_generada, ci_participante))
+        cursor.execute(query_login, (email, contrasena_hash, ci_participante))
         
         conn.commit()
         cursor.close()
@@ -767,12 +772,15 @@ def autenticar_usuario(correo, contrasena):
     try:
         cursor = conn.cursor(dictionary=True)
         
+        # Hashear la contraseña ingresada para comparar
+        contrasena_hash = hashear_contrasena(contrasena)
+        
         query = """
             SELECT rol, correo 
             FROM login 
             WHERE correo = %s AND contrasena = %s
         """
-        cursor.execute(query, (correo, contrasena))
+        cursor.execute(query, (correo, contrasena_hash))
         resultado = cursor.fetchone()
         
         cursor.close()
@@ -1098,18 +1106,20 @@ def cambiar_contrasena(correo, contrasena_actual, contrasena_nueva):
             conn.close()
             return "Usuario no encontrado"
         
-        if resultado['contrasena'] != contrasena_actual:
+        # Comparar contraseña actual hasheada
+        if resultado['contrasena'] != hashear_contrasena(contrasena_actual):
             cursor.close()
             conn.close()
             return "contrasena actual incorrecta"
         
         # Actualizar contrasena y marcar que ya no debe cambiarla
+        contrasena_nueva_hash = hashear_contrasena(contrasena_nueva)
         query_actualizar = """
             UPDATE login 
             SET contrasena = %s, debe_cambiar_contrasena = FALSE 
             WHERE correo = %s
         """
-        cursor.execute(query_actualizar, (contrasena_nueva, correo))
+        cursor.execute(query_actualizar, (contrasena_nueva_hash, correo))
         conn.commit()
         cursor.close()
         conn.close()

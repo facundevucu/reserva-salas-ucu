@@ -1,6 +1,5 @@
 from db_connection import get_db_connection, close_connection
 
-
 # ---------------- PARTICIPANTES ----------------
 
 # Verificar si el usuario tiene una sanción activa
