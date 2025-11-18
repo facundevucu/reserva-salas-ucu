@@ -2,7 +2,6 @@
 # en modulos dejo todo el codigo de cada funcionalidad
 from modulos import pantalla_login, main_admin, main_usuario
 
-
 def main():
     sesion = pantalla_login()
     if not sesion:
