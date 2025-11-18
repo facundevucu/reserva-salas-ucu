@@ -3,31 +3,31 @@ USE obligatorio_bdd;
 -- FAcultades
 INSERT INTO facultad (nombre) VALUES
     ('Ciencias Empresariales'),
-    ('Ingeniería y Tecnologías'),
+    ('Ingenieria y Tecnologias'),
     ('Ciencias de la Salud'),
     ('Humanidades y Artes Liberales'),
     ('Derecho y Ciencias Sociales');
 
 -- Programas Academicos
 INSERT INTO programa_academico (nombre_programa, id_facultad, tipo) VALUES
-    ('Licenciatura en Dirección de Empresas', 1, 'grado'),
+    ('Licenciatura en Direccion de Empresas', 1, 'grado'),
     ('Licenciatura en Finanzas', 1, 'grado'),
-    ('Ingeniería en Informática', 2, 'grado'),
-    ('Ingeniería Electrónica', 2, 'grado'),
-    ('Licenciatura en Nutrición', 3, 'grado'),
-    ('Licenciatura en Fonoaudiología', 3, 'grado'),
-    ('Licenciatura en Psicología', 4, 'grado'),
-    ('Licenciatura en Comunicación Social', 4, 'grado'),
-    ('Abogacía', 5, 'grado'),
+    ('Ingenieria en Informatica', 2, 'grado'),
+    ('Ingenieria Electronica', 2, 'grado'),
+    ('Licenciatura en Nutricion', 3, 'grado'),
+    ('Licenciatura en Fonoaudiologia', 3, 'grado'),
+    ('Licenciatura en Psicologia', 4, 'grado'),
+    ('Licenciatura en Comunicacion Social', 4, 'grado'),
+    ('Abogacia', 5, 'grado'),
     ('Notariado', 5, 'grado'),
-    ('MBA - Maestría en Dirección de Empresas', 1, 'posgrado'),
-    ('Maestría en Gerencia de Tecnología de la Información', 2, 'posgrado');
+    ('MBA - Maestria en Direccion de Empresas', 1, 'posgrado'),
+    ('Maestria en Gerencia de Tecnologia de la Informacion', 2, 'posgrado');
 
 -- Edificios
 INSERT INTO edificio (nombre_edificio, direccion, departamento) VALUES
-    ('Edificio Sacré Coeur', 'Av. 8 de Octubre 2738', 'Montevideo'),
+    ('Edificio Sacre Coeur', 'Av. 8 de Octubre 2738', 'Montevideo'),
     ('Edificio San Ignacio', 'Cornelio Cantera 2733', 'Montevideo'),
-    ('Edificio Semprún', 'Estero Bellaco 2771', 'Montevideo'),
+    ('Edificio Semprun', 'Estero Bellaco 2771', 'Montevideo'),
     ('Edificio Mullin', 'Comandante Braga 2715', 'Montevideo'),
     ('Edificio Madre Marta', 'Av. Garibaldi 2831', 'Montevideo');
 
@@ -37,20 +37,20 @@ INSERT INTO sala (nombre_sala, edificio, capacidad, tipo_sala) VALUES
     ('Sala A2', 'Edificio Sacré Coeur', 25, 'docente'),
     ('Sala B1', 'Edificio San Ignacio', 20, 'libre'),
     ('Sala B2', 'Edificio San Ignacio', 15, 'posgrado'),
-    ('Sala C1', 'Edificio Semprún', 40, 'libre'),
-    ('Sala C2', 'Edificio Semprún', 30, 'docente'),
+    ('Sala C1', 'Edificio Semprun', 40, 'libre'),
+    ('Sala C2', 'Edificio Semprun', 30, 'docente'),
     ('Sala D1', 'Edificio Mullin', 10, 'posgrado'),
     ('Sala E1', 'Edificio Madre Marta', 35, 'libre');
 
 -- Participantes
 INSERT INTO participante (ci, nombre, apellido, email) VALUES
     (12345678, 'Facundo', 'Gonzales', 'facundo.gonzales@ucu.edu.uy'),
-    (23456789, 'Ana', 'Pérez', 'ana.perez@ucu.edu.uy'),
-    (34567890, 'María', 'González', 'maria.gonzalez@ucu.edu.uy'),
-    (45678901, 'Carlos', 'Rodríguez', 'carlos.rodriguez@ucu.edu.uy'),
-    (56789012, 'Laura', 'Martínez', 'laura.martinez@ucu.edu.uy'),
-    (67890123, 'Javier', 'Fernández', 'javier.fernandez@ucu.edu.uy'),
-    (78901234, 'Valentina', 'López', 'valentina.lopez@ucu.edu.uy');
+    (23456789, 'Ana', 'Perez', 'ana.perez@ucu.edu.uy'),
+    (34567890, 'Maria', 'Gonzalez', 'maria.gonzalez@ucu.edu.uy'),
+    (45678901, 'Carlos', 'Rodriguez', 'carlos.rodriguez@ucu.edu.uy'),
+    (56789012, 'Laura', 'Martinez', 'laura.martinez@ucu.edu.uy'),
+    (67890123, 'Javier', 'Fernandez', 'javier.fernandez@ucu.edu.uy'),
+    (78901234, 'Valentina', 'Lopez', 'valentina.lopez@ucu.edu.uy');
 
 -- Login (contraseñas hasheadas con SHA-256)
 -- pass1234 -> bd94dcda26fccb4e68d6a31f9b5aac0b571ae266d822620e901ef7ebe3a11d4f
@@ -89,10 +89,10 @@ INSERT INTO turno (hora_inicio, hora_fin) VALUES
 
 -- REservas
 INSERT INTO reserva (nombre_sala, edificio, fecha, id_turno, estado) VALUES
-('Sala A1', 'Edificio Sacré Coeur', '2025-10-25', 1, 'activa'),      -- turno 08:00–09:00
-('Sala A2', 'Edificio Sacré Coeur', '2025-10-25', 2, 'activa'),      -- turno 09:00–10:00
+('Sala A1', 'Edificio Sacre Coeur', '2025-10-25', 1, 'activa'),      -- turno 08:00–09:00
+('Sala A2', 'Edificio Sacre Coeur', '2025-10-25', 2, 'activa'),      -- turno 09:00–10:00
 ('Sala B1', 'Edificio San Ignacio', '2025-10-26', 3, 'finalizada'),  -- turno 10:00–11:00
-('Sala C1', 'Edificio Semprún', '2025-10-26', 4, 'activa'),          -- turno 11:00–12:00
+('Sala C1', 'Edificio Semprun', '2025-10-26', 4, 'activa'),          -- turno 11:00–12:00
 ('Sala D1', 'Edificio Mullin', '2025-10-27', 5, 'cancelada'),        -- turno 12:00–13:00
 ('Sala E1', 'Edificio Madre Marta', '2025-10-28', 6, 'activa');      -- turno 13:00–14:00
 
@@ -108,15 +108,15 @@ INSERT INTO reserva_participante (ci_participante, id_reserva, fecha_solicitud_r
 -- Sanciones con respecto a las reservas anteriores
 INSERT INTO sancion_participante (ci_participante, motivo, fecha_inicio, fecha_fin) VALUES
 (56789012, 'Incumplimiento de normas del aula', '2025-10-22', '2025-12-22'),
-(67890123, 'Llegadas tardías reiteradas', '2025-10-22', '2025-12-22'),
+(67890123, 'Llegadas tardias reiteradas', '2025-10-22', '2025-12-22'),
 (34567890, 'Uso indebido de la sala reservada', '2025-10-23', '2025-12-23');
 
 -- Participantes Programas Academicos
 INSERT INTO participante_programa_academico (ci_participante, nombre_programa, rol) VALUES
-(12345678, 'Ingeniería en Informática', 'alumno'),
-(23456789, 'Licenciatura en Dirección de Empresas', 'alumno'),
-(34567890, 'Licenciatura en Comunicación Social', 'alumno'),
-(45678901, 'Licenciatura en Psicología', 'alumno'),
-(56789012, 'Licenciatura en Fonoaudiología', 'alumno'),
-(67890123, 'MBA - Maestría en Dirección de Empresas', 'docente'),
-(78901234, 'Licenciatura en Nutrición', 'alumno');
+(12345678, 'Ingenieria en Informatica', 'alumno'),
+(23456789, 'Licenciatura en Direccion de Empresas', 'alumno'),
+(34567890, 'Licenciatura en Comunicacion Social', 'alumno'),
+(45678901, 'Licenciatura en Psicologia', 'alumno'),
+(56789012, 'Licenciatura en Fonoaudiologia', 'alumno'),
+(67890123, 'MBA - Maestria en Direccion de Empresas', 'docente'),
+(78901234, 'Licenciatura en Nutricion', 'alumno');

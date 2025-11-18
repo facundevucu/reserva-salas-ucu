@@ -8,7 +8,13 @@ from validaciones import (
     sala_ocupada,
     excede_capacidad,
     validar_tipo_sala,
-    fecha_valida
+    fecha_valida,
+    validar_ci,
+    validar_email,
+    validar_nombre_apellido,
+    existe_participante,
+    email_disponible,
+    email_disponible_para
 )
 import random
 import string
@@ -159,12 +165,32 @@ def modificar_reserva(id_reserva, nombre_sala = None, fecha = None, id_turno = N
 
 #ABM de PERSONAS (creacion, eliminacion, modificacion)--------------------------------
 def crear_persona(ci_participante, nombre, apellido, email):
-    conn = get_db_connection()
+    conn = get_db_connection(role="admin")
     if not conn:
         return "Error de conexión a la base de datos"
     
     try:
         cursor = conn.cursor()
+        # Validaciones básicas sin triggers
+        if not validar_ci(ci_participante):
+            cursor.close(); conn.close()
+            return "La cédula debe tener exactamente 8 dígitos numéricos."
+        if not validar_nombre_apellido(nombre):
+            cursor.close(); conn.close()
+            return "El nombre debe tener al menos 2 caracteres."
+        if not validar_nombre_apellido(apellido):
+            cursor.close(); conn.close()
+            return "El apellido debe tener al menos 2 caracteres."
+        if not validar_email(email):
+            cursor.close(); conn.close()
+            return "El email no tiene un formato válido (usuario@dominio.com)."
+        # Unicidad
+        if existe_participante(ci_participante):
+            cursor.close(); conn.close()
+            return f"Ya existe un participante con la cédula {ci_participante}."
+        if not email_disponible(email):
+            cursor.close(); conn.close()
+            return "El correo ya está registrado por otro usuario."
         
         # Insertar participante
         query_participante = """
@@ -203,7 +229,7 @@ def eliminar_persona(ci_participante):
     connection = None
 
     try:
-        connection = get_db_connection()
+        connection = get_db_connection(role="admin")
         cursor = connection.cursor()
 
         # Verificar si tiene reservas asociadas
@@ -235,19 +261,27 @@ def eliminar_persona(ci_participante):
 def modificar_persona(ci_participante, nombre=None, apellido=None, email=None):
     connection = None
     try:
-        connection = get_db_connection()
+        connection = get_db_connection(role="admin")
         cursor = connection.cursor()
 
         campos = []   # columnas a modificar
         valores = []  # valores nuevos que reemplazan los %s
 
         if nombre:
+            if not validar_nombre_apellido(nombre):
+                return "El nombre debe tener al menos 2 caracteres."
             campos.append("nombre = %s")
             valores.append(nombre)
         if apellido:
+            if not validar_nombre_apellido(apellido):
+                return "El apellido debe tener al menos 2 caracteres."
             campos.append("apellido = %s")
             valores.append(apellido)
         if email:
+            if not validar_email(email):
+                return "El email no tiene un formato válido (usuario@dominio.com)."
+            if not email_disponible_para(ci_participante, email):
+                return "El correo ya está registrado por otro usuario."
             campos.append("email = %s")
             valores.append(email)
 
@@ -258,6 +292,12 @@ def modificar_persona(ci_participante, nombre=None, apellido=None, email=None):
         sql = f"UPDATE participante SET {', '.join(campos)} WHERE ci = %s"
         # Cambié ci_participante por ci en el WHERE
         cursor.execute(sql, valores)
+        # Mantener coherencia: si cambia el email, también actualizo login.correo
+        if email:
+            cursor.execute(
+                "UPDATE login SET correo = %s WHERE ci_participante = %s",
+                (email, ci_participante)
+            )
         connection.commit()
 
         return f"Persona {ci_participante} modificada correctamente."
@@ -279,9 +319,11 @@ def crear_sala(nombre_sala, edificio, capacidad, tipo_sala):
 
     if not isinstance(capacidad, int) or capacidad <= 0:
         return "La capacidad debe ser un número entero positivo."
+    if tipo_sala not in ("libre", "posgrado", "docente"):
+        return "Tipo de sala inválido. Debe ser 'libre', 'posgrado' o 'docente'."
 
     # verificar si la sala ya existe antes de insertarla
-    conn = get_db_connection()
+    conn = get_db_connection(role="admin")
     cursor = conn.cursor()
     # hago una consulta para ver si ya existe la sala con ese nombre y edificio
     cursor.execute("SELECT 1 FROM sala WHERE nombre_sala = %s AND edificio = %s", (nombre_sala, edificio))
@@ -292,7 +334,7 @@ def crear_sala(nombre_sala, edificio, capacidad, tipo_sala):
 
     # ahora si paso a crear la sala
     try:
-        connection = get_db_connection()
+        connection = get_db_connection(role="admin")
         cursor = connection.cursor()
 
         sql = """
@@ -317,7 +359,7 @@ def crear_sala(nombre_sala, edificio, capacidad, tipo_sala):
 def eliminar_sala(nombre_sala, edificio):
     connection = None
     try:
-        connection = get_db_connection()
+        connection = get_db_connection(role="admin")
         cursor = connection.cursor()
 
         sql = "DELETE FROM sala WHERE nombre_sala = %s AND edificio = %s"
@@ -354,7 +396,7 @@ def modificar_sala(nombre_sala, edificio, capacidad=None, tipo_sala=None):
     # no utilizo los recursos del try si ya se que va a fallar
 
     try:
-        connection = get_db_connection()
+        connection = get_db_connection(role="admin")
         cursor = connection.cursor()
 
         campos = []   # columnas a cambiar
@@ -425,7 +467,7 @@ def crear_sancion(ci_participante, motivo, fecha_inicio, fecha_fin=None, estado=
         return "El participante ya tiene una sanción activa."
 
     try:
-        conn = get_db_connection()
+        conn = get_db_connection(role="admin")
         cursor = conn.cursor()
 
         sql = """
@@ -453,7 +495,7 @@ def levantar_sancion(id_sancion):
     accion = "levantar_sancion"
     connection = None
     try:
-        connection = get_db_connection()
+        connection = get_db_connection(role="admin")
         cursor = connection.cursor()
         sql = """
             UPDATE sancion_participante
@@ -485,7 +527,7 @@ def eliminar_sancion(id_sancion):
     accion = "eliminar_sancion"
     connection = None
     try:
-        connection = get_db_connection()
+        connection = get_db_connection(role="admin")
         cursor = connection.cursor()
         sql = "UPDATE sancion_participante SET estado = 'anulada' WHERE id_sancion = %s"
         cursor.execute(sql, (id_sancion,)) # en forma de tupla
@@ -522,7 +564,7 @@ def modificar_sancion(id_sancion, motivo=None, fecha_inicio=None, fecha_fin=None
         return "La fecha de fin no puede ser anterior a la fecha de inicio."
 
     try:
-        connection = get_db_connection()
+        connection = get_db_connection(role="admin")
         cursor = connection.cursor()
 
         campos = []

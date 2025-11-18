@@ -6,7 +6,7 @@ from reportes import *
 
 def limpiar_pantalla():
     os.system('clear')
-    os.system('clear') # doble como el clear clears
+    os.system('clear') # doble como el clear clear
 
 
 # ------------------- AUTENTICACION -------------------
@@ -254,14 +254,35 @@ def crear_participante_menu():
     limpiar_pantalla()
     print("--- CREAR PARTICIPANTE ---")
     # aca voy a usar el strip para evitar espacios al inicio/final (ejemplo: "  Juan  " -> "Juan")
-    ci = input("Ingresa la cédula: ").strip()
+    
+    # Validar CI (8 dígitos)
+    ci = input("Ingresa la cédula (8 dígitos): ").strip()
+    if not ci.isdigit() or len(ci) != 8:
+        print("La cédula debe tener exactamente 8 dígitos numéricos")
+        input("\nPresiona Enter para continuar...")
+        return
+    
     nombre = input("Ingresa el nombre: ").strip()
+    if not nombre or len(nombre) < 2:
+        print("El nombre debe tener al menos 2 caracteres")
+        input("\nPresiona Enter para continuar...")
+        return
+    
     apellido = input("Ingresa el apellido: ").strip()
+    if not apellido or len(apellido) < 2:
+        print("El apellido debe tener al menos 2 caracteres")
+        input("\nPresiona Enter para continuar...")
+        return
+    
+    # Validar formato de email
     email = input("Ingresa el email: ").strip()
+    if "@" not in email or "." not in email.split("@")[-1]:
+        print("Email inválido. Debe tener formato: usuario@ucu.edu.uy")
+        input("\nPresiona Enter para continuar...")
+        return
     
     if not participante_valido(ci, nombre, apellido, email):
         print(" Datos inválidos. Verifica los campos.")
-        # a implementar: mostrar errores específicos (ejemplo: cedula repetida)
     else:
         resultado = crear_persona(ci, nombre, apellido, email)
         if isinstance(resultado, dict):

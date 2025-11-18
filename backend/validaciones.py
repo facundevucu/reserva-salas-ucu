@@ -1,4 +1,6 @@
 from db_connection import get_db_connection, close_connection
+import re
+
 
 # ---------------- PARTICIPANTES ----------------
 
@@ -29,14 +31,81 @@ def existe_participante(ci_participante):
     return existe is not None
 
 
-# Validar datos del participante
-def participante_valido(ci, nombre, apellido, email):
+# ---------- VALIDACIONES BÁSICAS ----------
 
+def validar_ci(ci: str):
+    if ci is None:
+        return False
+    ci_str = str(ci).strip()
+    return ci_str.isdigit() and len(ci_str) == 8
+
+
+def validar_email(email: str):
+    if not email:
+        return False
+    email = email.strip()
+    # Patrón simple y tolerante (sin dependencias externas)
+    patron = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
+    return re.match(patron, email) is not None
+
+
+def validar_nombre_apellido(texto: str) -> bool:
+    if texto is None:
+        return False
+    return len(texto.strip()) >= 2
+
+
+def email_disponible(email: str):
+    if not validar_email(email):
+        return False
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Primero reviso en login (correo de acceso)
+        cursor.execute("SELECT 1 FROM login WHERE correo = %s LIMIT 1;", (email,))
+        if cursor.fetchone():
+            return False
+        # También reviso en participante por coherencia de datos
+        cursor.execute("SELECT 1 FROM participante WHERE email = %s LIMIT 1;", (email,))
+        if cursor.fetchone():
+            return False
+        return True
+    finally:
+        conn.close()
+
+
+def email_disponible_para(ci: str, email: str):
+    if not validar_email(email):
+        return False
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # el correo pertenece a otro usuario en login?
+        cursor.execute("SELECT ci_participante FROM login WHERE correo = %s LIMIT 1;", (email,))
+        fila = cursor.fetchone()
+        if fila and str(fila[0]) != str(ci):
+            return False
+        # el correo pertenece a otro participante?
+        cursor.execute("SELECT ci FROM participante WHERE email = %s LIMIT 1;", (email,))
+        fila = cursor.fetchone()
+        if fila and str(fila[0]) != str(ci):
+            return False
+        return True
+    finally:
+        conn.close()
+
+
+# Validación agregada manteniendo compatibilidad (bool)
+def participante_valido(ci, nombre, apellido, email):
     if not all([ci, nombre, apellido, email]):
         return False
-    if not str(ci).isdigit() or len(str(ci)) < 7:
+    if not validar_ci(ci):
         return False
-    if "@" not in email or "." not in email:
+    if not validar_nombre_apellido(nombre):
+        return False
+    if not validar_nombre_apellido(apellido):
+        return False
+    if not validar_email(email):
         return False
     return True
 

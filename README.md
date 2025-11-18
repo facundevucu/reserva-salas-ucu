@@ -16,11 +16,11 @@ como en Windows.
 
 3.  Construir y levantar los contenedores:
     Desde la carpeta raíz del proyecto ejecutar: 
-    - docker compose up –build
+    - docker compose up --build
 
 4.  Ejecutar el programa Ingresar al contenedor: 
-    - docker exec -it
-    - python_app bash 
+    En otra ventana
+    - docker exec -it python_app bash 
     Luego iniciar la aplicación: 
     - python backend/main.py
 

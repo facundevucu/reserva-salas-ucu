@@ -1,5 +1,11 @@
-create database if not exists obligatorio_bdd;
-use obligatorio_bdd;
+USE obligatorio_bdd;
+
+-- como docker ya crea la BD, solo hago alter para
+-- evitar errores de tildes y ñ
+ALTER DATABASE obligatorio_bdd
+  CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
 
 
 -- Se organiza de mayor a menor tamaño de la organización/objeto

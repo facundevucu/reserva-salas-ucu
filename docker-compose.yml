@@ -22,12 +22,12 @@ services:
       MYSQL_ROOT_PASSWORD: reservasalasucu2025_facundo_marcos
       MYSQL_DATABASE: obligatorio_bdd
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./db:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-hmysql", "-uroot", "-p1234"]
+      test: ["CMD", "mysqladmin", "ping", "-hlocalhost", "-uroot", "-preservasalasucu2025_facundo_marcos"]
       interval: 5s
       timeout: 10s
       retries: 10
