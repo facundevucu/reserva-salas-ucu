@@ -1,4 +1,5 @@
-Link para acceder al informe: https://correoucuedu-my.sharepoint.com/:w:/r/personal/marcos_devincenzi_correo_ucu_edu_uy/Documents/Informe%20Bases%20de%20Datos.docx?d=w7991e8c0a3d1451a907923c2204f4822&csf=1&web=1&e=VLtV4z
+Link para acceder al informe: 
+https://correoucuedu-my.sharepoint.com/:w:/r/personal/marcos_devincenzi_correo_ucu_edu_uy/Documents/Informe%20Bases%20de%20Datos.docx?d=w7991e8c0a3d1451a907923c2204f4822&csf=1&web=1&e=VLtV4z
 
 Guía para ejecutar el sistema de gestión de salas y reservas
 
