@@ -33,8 +33,8 @@ INSERT INTO edificio (nombre_edificio, direccion, departamento) VALUES
 
 -- Salas
 INSERT INTO sala (nombre_sala, edificio, capacidad, tipo_sala) VALUES
-    ('Sala A1', 'Edificio Sacré Coeur', 30, 'libre'),
-    ('Sala A2', 'Edificio Sacré Coeur', 25, 'docente'),
+    ('Sala A1', 'Edificio Sacre Coeur', 30, 'libre'),
+    ('Sala A2', 'Edificio Sacre Coeur', 25, 'docente'),
     ('Sala B1', 'Edificio San Ignacio', 20, 'libre'),
     ('Sala B2', 'Edificio San Ignacio', 15, 'posgrado'),
     ('Sala C1', 'Edificio Semprun', 40, 'libre'),

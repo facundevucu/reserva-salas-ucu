@@ -23,7 +23,7 @@ como en Windows.
 
 4.  Ejecutar el programa Ingresar al contenedor: 
     En otra ventana
-    - docker exec -it python_app bash 
+    - docker exec -it python_app_obligatorio bash 
     Luego iniciar la aplicación: 
     - python backend/main.py
 
