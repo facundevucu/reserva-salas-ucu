@@ -31,15 +31,15 @@ como en Windows.
     
     **Administrador:**
     - Correo: facundo.gonzales@ucu.edu.uy
-    - Contraseña: pass1234 
+    - Contraseña: admin123
     - Rol: admin
     
     **Usuario regular:**
     - Correo: ana.perez@ucu.edu.uy
-    - Contraseña: pass2345
+    - Contraseña: usuario123
     - Rol: usuario
     
-    **Nota de Seguridad:** Todas las contraseñas están hasheadas con SHA-256 en la base de datos.
+    **Nota de Seguridad:** Estos usuarios de prueba tienen contraseñas genéricas sin hashear para facilitar las pruebas. Cuando se cambien las contraseñas desde la aplicación, se hashearán automáticamente con SHA-256.
 
 
 6.  Detener los contenedores:

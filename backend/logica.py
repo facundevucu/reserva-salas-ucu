@@ -1153,8 +1153,9 @@ def cambiar_contrasena(correo, contrasena_actual, contrasena_nueva):
             conn.close()
             return "Usuario no encontrado"
         
-        # Comparar contraseña actual hasheada
-        if resultado['contrasena'] != hashear_contrasena(contrasena_actual):
+        # Comparar contraseña actual (intentar con hash y con texto plano)
+        contrasena_hash = hashear_contrasena(contrasena_actual)
+        if resultado['contrasena'] != contrasena_hash and resultado['contrasena'] != contrasena_actual:
             cursor.close()
             conn.close()
             return "contrasena actual incorrecta"
