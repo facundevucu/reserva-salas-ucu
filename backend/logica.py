@@ -825,6 +825,11 @@ def autenticar_usuario(correo, contrasena):
         cursor.execute(query, (correo, contrasena_hash))
         resultado = cursor.fetchone()
         
+        # Si no encontró con hash, intentar con contraseña en texto plano (para usuarios de prueba)
+        if not resultado:
+            cursor.execute(query, (correo, contrasena))
+            resultado = cursor.fetchone()
+        
         cursor.close()
         conn.close()
         

@@ -119,10 +119,10 @@ ORDER BY cantidad_facultades_diferentes DESC;
 -- Patrones de uso por franja horaria
 SELECT 
     CASE 
-        WHEN t.hora_inicio < '09:00' THEN '🌅 Madrugadores (antes 9am)'
-        WHEN t.hora_inicio < '13:00' THEN '☀️ Mañana (9am-1pm)'
-        WHEN t.hora_inicio < '17:00' THEN '🌤️ Tarde (1pm-5pm)'
-        ELSE '🌙 Noche (después 5pm)'
+        WHEN t.hora_inicio < '09:00' THEN 'Madrugadores (antes 9am)'
+        WHEN t.hora_inicio < '13:00' THEN 'Mañana (9am-1pm)'
+        WHEN t.hora_inicio < '17:00' THEN 'Tarde (1pm-5pm)'
+        ELSE 'Noche (después 5pm)'
     END AS franja_horaria,
     pa.tipo as tipo_programa,
     ppa.rol as rol,
