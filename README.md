@@ -21,7 +21,7 @@ como en Windows.
     Desde la carpeta raíz del proyecto ejecutar: 
     - docker compose up --build
 
-4.  Ejecutar el programa Ingresar al contenedor: 
+4.  Ejecutar el programa:
     En otra ventana
     - docker exec -it python_app_obligatorio bash 
     Luego iniciar la aplicación: 

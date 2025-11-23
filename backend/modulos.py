@@ -1165,7 +1165,10 @@ def menu_reportes():
         print("6. Reservas y asistencias por tipo y rol")
         print("7. Sanciones por tipo y rol")
         print("8. Porcentaje de reservas utilizadas")
-        print("9. Volver al menú principal")
+        print("9. Horarios fantasma")
+        print("10. Sala camaleón")
+        print("11. Patrones de uso por franja horaria")
+        print("0. Volver al menú principal")
         opcion = input("Elige una opción: ")
         
         limpiar_pantalla()
@@ -1186,6 +1189,12 @@ def menu_reportes():
         elif opcion == "8":
             porcentaje_reservas_utilizadas()
         elif opcion == "9":
+            horarios_fantasma()
+        elif opcion == "10":
+            sala_camaleon()
+        elif opcion == "11":
+            patrones_uso_por_franja_horaria()
+        elif opcion == "0":
             break
         else:
             print("Opción no válida")

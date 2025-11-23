@@ -80,3 +80,60 @@ select
     ROUND((COUNT(*) * 100) / (select COUNT(*) FROM reserva), 2) as porcentaje
 from reserva
 group by estado_reserva;
+
+-- Consultas adicionales
+
+-- Horarios fantasma: salas que nunca se reservan en ciertos turnos
+SELECT 
+    s.nombre_sala,
+    t.hora_inicio,
+    t.hora_fin,
+    e.nombre_edificio,
+    s.capacidad
+FROM sala s
+CROSS JOIN turno t
+JOIN edificio e ON s.edificio = e.nombre_edificio
+WHERE NOT EXISTS (
+    SELECT 1 
+    FROM reserva r 
+    WHERE r.nombre_sala = s.nombre_sala 
+    AND r.id_turno = t.id_turno
+)
+ORDER BY s.nombre_sala, t.hora_inicio;
+
+-- Sala camaleon, sala con mayor diversidad de facultades que la usan
+SELECT 
+    r.nombre_sala,
+    COUNT(DISTINCT f.id_facultad) as cantidad_facultades_diferentes,
+    GROUP_CONCAT(DISTINCT f.nombre ORDER BY f.nombre SEPARATOR ', ') as facultades_que_la_usan,
+    COUNT(DISTINCT r.id_reserva) as total_reservas
+FROM reserva r
+JOIN reserva_participante rp ON r.id_reserva = rp.id_reserva
+JOIN participante_programa_academico ppa ON rp.ci_participante = ppa.ci_participante
+JOIN programa_academico pa ON ppa.nombre_programa = pa.nombre_programa
+JOIN facultad f ON pa.id_facultad = f.id_facultad
+GROUP BY r.nombre_sala
+HAVING COUNT(DISTINCT f.id_facultad) > 1
+ORDER BY cantidad_facultades_diferentes DESC;
+
+-- Patrones de uso por franja horaria
+SELECT 
+    CASE 
+        WHEN t.hora_inicio < '09:00' THEN '🌅 Madrugadores (antes 9am)'
+        WHEN t.hora_inicio < '13:00' THEN '☀️ Mañana (9am-1pm)'
+        WHEN t.hora_inicio < '17:00' THEN '🌤️ Tarde (1pm-5pm)'
+        ELSE '🌙 Noche (después 5pm)'
+    END AS franja_horaria,
+    pa.tipo as tipo_programa,
+    ppa.rol as rol,
+    COUNT(r.id_reserva) as cantidad_reservas
+FROM reserva r
+JOIN turno t ON r.id_turno = t.id_turno
+JOIN reserva_participante rp ON r.id_reserva = rp.id_reserva
+JOIN participante_programa_academico ppa ON rp.ci_participante = ppa.ci_participante
+JOIN programa_academico pa ON ppa.nombre_programa = pa.nombre_programa
+GROUP BY franja_horaria, pa.tipo, ppa.rol
+ORDER BY 
+    MIN(t.hora_inicio),
+    pa.tipo, 
+    ppa.rol;
