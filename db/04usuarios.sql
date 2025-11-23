@@ -24,6 +24,7 @@ GRANT SELECT ON obligatorio_bdd.participante TO 'rol_app_user';
 GRANT SELECT ON obligatorio_bdd.edificio TO 'rol_app_user';
 GRANT SELECT ON obligatorio_bdd.sancion_participante TO 'rol_app_user';
 GRANT SELECT ON obligatorio_bdd.programa_academico TO 'rol_app_user';
+GRANT SELECT ON obligatorio_bdd.participante_programa_academico TO 'rol_app_user';
 GRANT SELECT ON obligatorio_bdd.facultad TO 'rol_app_user';
 GRANT SELECT, UPDATE ON obligatorio_bdd.login TO 'rol_app_user';
 GRANT INSERT, UPDATE ON obligatorio_bdd.reserva TO 'rol_app_user';
