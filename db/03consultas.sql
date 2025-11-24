@@ -137,3 +137,65 @@ ORDER BY
     MIN(t.hora_inicio),
     pa.tipo, 
     ppa.rol;
+
+-- ===============================================
+-- CONSULTAS ADICIONALES AVANZADAS
+-- ===============================================
+-- Marcos consulto si podiamos agregar mas consultas y nos dijeron que si
+
+-- Demanda de salas en períodos de examen vs. período lectivo
+SELECT CASE
+         WHEN MONTH(r.fecha) IN (2, 7, 11) THEN 'Examen'
+         ELSE 'Lectivo'
+       END AS periodo,
+       COUNT(*) AS total_reservas,
+       ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM reserva), 2) AS porcentaje
+FROM reserva r
+GROUP BY periodo
+ORDER BY total_reservas DESC;
+
+
+
+-- Tiempo promedio de antelación de las reservas
+SELECT ROUND(AVG(DATEDIFF(r.fecha, rp.fecha_solicitud_reserva)), 2) AS dias_promedio_anticipacion,
+       ROUND(AVG(TIMESTAMPDIFF(HOUR, rp.fecha_solicitud_reserva, r.fecha)), 2) AS horas_promedio_anticipacion
+FROM reserva_participante rp
+JOIN reserva r ON rp.id_reserva = r.id_reserva
+WHERE rp.fecha_solicitud_reserva IS NOT NULL;
+
+-- Distribución semanal de uso por edificio
+SELECT r.edificio,
+       DAYNAME(r.fecha) AS dia_semana,
+       COUNT(*) AS total_reservas,
+       ROUND(AVG(s.capacidad), 0) AS capacidad_promedio_salas
+FROM reserva r
+JOIN sala s ON r.nombre_sala = s.nombre_sala
+GROUP BY r.edificio, dia_semana
+ORDER BY r.edificio, total_reservas DESC;
+
+-- Alumnos sancionados
+SELECT p.ci,
+       CONCAT(p.nombre, ' ', p.apellido) AS participante,
+       pa.nombre_programa,
+       s.estado,
+       s.motivo,
+       s.fecha_inicio,
+       s.fecha_fin,
+       DATEDIFF(IFNULL(s.fecha_fin, CURDATE()), s.fecha_inicio) AS dias_sancion
+FROM sancion_participante s
+JOIN participante p ON s.ci_participante = p.ci
+LEFT JOIN participante_programa_academico ppa ON ppa.ci_participante = p.ci
+LEFT JOIN programa_academico pa ON pa.nombre_programa = ppa.nombre_programa
+ORDER BY s.estado DESC, s.fecha_inicio DESC;
+
+-- Usuarios con mayor reincidencia en sanciones
+SELECT p.ci,
+       CONCAT(p.nombre, ' ', p.apellido) AS participante,
+       COUNT(s.id_sancion) AS total_sanciones,
+       SUM(CASE WHEN s.estado = 'activa' THEN 1 ELSE 0 END) AS sanciones_activas,
+       MAX(s.fecha_inicio) AS ultima_sancion
+FROM sancion_participante s
+JOIN participante p ON s.ci_participante = p.ci
+GROUP BY p.ci, participante
+HAVING total_sanciones > 0
+ORDER BY total_sanciones DESC, sanciones_activas DESC;

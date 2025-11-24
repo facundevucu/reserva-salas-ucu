@@ -227,6 +227,95 @@ def patrones_uso_por_franja_horaria():
     mostrar_resultados(" Patrones de uso por franja horaria", cols, rows)
     return cols, rows
 
+# ------------------------------------------
+# CONSULTAS ADICIONALES AVANZADAS
+
+def demanda_por_periodo():
+    sql = """
+        SELECT CASE
+                 WHEN MONTH(r.fecha) IN (2, 7, 11) THEN 'Examen'
+                 ELSE 'Lectivo'
+               END AS periodo,
+               COUNT(*) AS total_reservas,
+               ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM reserva), 2) AS porcentaje
+        FROM reserva r
+        GROUP BY periodo
+        ORDER BY total_reservas DESC;
+    """
+    cols, rows = ejecutar_consulta(sql)
+    mostrar_resultados("Demanda de salas: Período de examen vs. período lectivo", cols, rows)
+    return cols, rows
+
+# def tasa_puntualidad_usuarios():
+# a futuro, implementacion dificil
+
+def tiempo_anticipacion_reservas():
+    sql = """
+        SELECT ROUND(AVG(DATEDIFF(r.fecha, rp.fecha_solicitud_reserva)), 2) AS dias_promedio_anticipacion,
+               ROUND(AVG(TIMESTAMPDIFF(HOUR, rp.fecha_solicitud_reserva, r.fecha)), 2) AS horas_promedio_anticipacion
+        FROM reserva_participante rp
+        JOIN reserva r ON rp.id_reserva = r.id_reserva
+        WHERE rp.fecha_solicitud_reserva IS NOT NULL;
+    """
+    cols, rows = ejecutar_consulta(sql)
+    mostrar_resultados("Tiempo promedio de antelación de las reservas", cols, rows)
+    return cols, rows
+
+# def duracion_efectiva_uso_salas():
+# a futuro, implementacion dificil
+
+def distribucion_semanal_por_edificio():
+    sql = """
+        SELECT r.edificio,
+               DAYNAME(r.fecha) AS dia_semana,
+               COUNT(*) AS total_reservas,
+               ROUND(AVG(s.capacidad), 0) AS capacidad_promedio_salas
+        FROM reserva r
+        JOIN sala s ON r.nombre_sala = s.nombre_sala
+        GROUP BY r.edificio, dia_semana
+        ORDER BY r.edificio, total_reservas DESC;
+    """
+    cols, rows = ejecutar_consulta(sql)
+    mostrar_resultados("Distribución semanal de uso por edificio", cols, rows)
+    return cols, rows
+
+def alumnos_sancionados():
+    sql = """
+        SELECT p.ci,
+               CONCAT(p.nombre, ' ', p.apellido) AS participante,
+               pa.nombre_programa,
+               s.estado,
+               s.motivo,
+               s.fecha_inicio,
+               s.fecha_fin,
+               DATEDIFF(IFNULL(s.fecha_fin, CURDATE()), s.fecha_inicio) AS dias_sancion
+        FROM sancion_participante s
+        JOIN participante p ON s.ci_participante = p.ci
+        LEFT JOIN participante_programa_academico ppa ON ppa.ci_participante = p.ci
+        LEFT JOIN programa_academico pa ON pa.nombre_programa = ppa.nombre_programa
+        ORDER BY s.estado DESC, s.fecha_inicio DESC;
+    """
+    cols, rows = ejecutar_consulta(sql)
+    mostrar_resultados("Listado de participantes sancionados", cols, rows)
+    return cols, rows
+
+def frecuentes_sanciones():
+    sql = """
+        SELECT p.ci,
+               CONCAT(p.nombre, ' ', p.apellido) AS participante,
+               COUNT(s.id_sancion) AS total_sanciones,
+               SUM(CASE WHEN s.estado = 'activa' THEN 1 ELSE 0 END) AS sanciones_activas,
+               MAX(s.fecha_inicio) AS ultima_sancion
+        FROM sancion_participante s
+        JOIN participante p ON s.ci_participante = p.ci
+        GROUP BY p.ci, participante
+        HAVING total_sanciones > 0
+        ORDER BY total_sanciones DESC, sanciones_activas DESC;
+    """
+    cols, rows = ejecutar_consulta(sql)
+    mostrar_resultados("Usuarios con mayor frecuencia en sanciones", cols, rows)
+    return cols, rows
+
 # Convierte objetos timedelta en texto legible (ej: '08:00:00')
 def convertir_tiempos(resultados):
     nuevos_resultados = []
@@ -256,4 +345,10 @@ if __name__ == "__main__":
     horarios_fantasma()
     sala_camaleon()
     patrones_uso_por_franja_horaria()
+    # Nuevas consultas
+    demanda_por_periodo()
+    tiempo_anticipacion_reservas()
+    distribucion_semanal_por_edificio()
+    alumnos_sancionados()
+    frecuentes_sanciones()
 # Bloque de prueba, ejecuta todos los reportes

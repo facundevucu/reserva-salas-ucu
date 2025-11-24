@@ -1156,7 +1156,8 @@ def registrar_mi_asistencia_menu(ci_sesion):
 def menu_reportes():
     while True:
         limpiar_pantalla()
-        print("\n--- REPORTES ---")
+        print("\n=== REPORTES Y ANALÍTICAS ===")
+        print("\n--- Reportes Básicos ---")
         print("1. Salas más reservadas")
         print("2. Turnos más demandados")
         print("3. Promedio de participantes por sala")
@@ -1168,7 +1169,13 @@ def menu_reportes():
         print("9. Horarios fantasma")
         print("10. Sala camaleón")
         print("11. Patrones de uso por franja horaria")
-        print("0. Volver al menú principal")
+        print("\n--- Reportes Avanzados ---")
+        print("12. Demanda por período (Examen vs. Lectivo)")
+        print("13. Tiempo de anticipación de reservas")
+        print("14. Distribución semanal por edificio")
+        print("15. Participantes sancionados")
+        print("16. Frecuencia en sanciones")
+        print("\n0. Volver al menú principal")
         opcion = input("Elige una opción: ")
         
         limpiar_pantalla()
@@ -1194,6 +1201,19 @@ def menu_reportes():
             sala_camaleon()
         elif opcion == "11":
             patrones_uso_por_franja_horaria()
+        elif opcion == "12":
+            demanda_por_periodo()
+
+        elif opcion == "13":
+            tiempo_anticipacion_reservas()
+ 
+        elif opcion == "14":
+            distribucion_semanal_por_edificio()
+        elif opcion == "15":
+            alumnos_sancionados()
+        elif opcion == "16":
+            frecuentes_sanciones()
+
         elif opcion == "0":
             break
         else:
