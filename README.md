@@ -46,3 +46,6 @@ como en Windows.
 7.  Notas adicionales: 
     La base de datos persiste gracias al volumen definido en docker-compose.yml. 
     Si se desea resetear completamente, debe eliminarse el volumen mysql_data.
+
+    Si tenes problemas al iniciar sesion por credenciales incorrectas, borra los volumenes de docker relacionados al obligatorio con 
+    - docker volume rm ...
